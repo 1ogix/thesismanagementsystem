@@ -1,0 +1,52 @@
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { TmsUser, UserRole } from "@/types";
+
+export async function createUserDocument(
+  uid: string,
+  data: Omit<TmsUser, "uid" | "createdAt">
+): Promise<void> {
+  await setDoc(doc(db, "users", uid), {
+    ...data,
+    uid,
+    createdAt: Timestamp.now(),
+  });
+}
+
+export async function getUserDocument(uid: string): Promise<TmsUser | null> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return null;
+  return snap.data() as TmsUser;
+}
+
+export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
+  await updateDoc(doc(db, "users", uid), { role });
+}
+
+export async function getAllUsers(): Promise<TmsUser[]> {
+  const snap = await getDocs(collection(db, "users"));
+  return snap.docs.map((d) => d.data() as TmsUser);
+}
+
+export async function getUsersByRole(role: UserRole): Promise<TmsUser[]> {
+  const q = query(collection(db, "users"), where("role", "==", role));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as TmsUser);
+}
+
+export async function getUsersByIds(uids: string[]): Promise<TmsUser[]> {
+  if (uids.length === 0) return [];
+  const promises = uids.map((uid) => getUserDocument(uid));
+  const results = await Promise.all(promises);
+  return results.filter(Boolean) as TmsUser[];
+}

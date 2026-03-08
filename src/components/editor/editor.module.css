@@ -1,0 +1,88 @@
+/* TipTap editor prose styles */
+.editor :global(.ProseMirror) {
+  outline: none;
+  min-height: 420px;
+  padding: 1.25rem 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: #1e293b;
+}
+
+.editor :global(.ProseMirror h1) {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+  color: #0f172a;
+}
+
+.editor :global(.ProseMirror h2) {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: #0f172a;
+}
+
+.editor :global(.ProseMirror h3) {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+  color: #0f172a;
+}
+
+.editor :global(.ProseMirror p) {
+  margin: 0.5rem 0;
+}
+
+.editor :global(.ProseMirror ul) {
+  list-style-type: disc;
+  padding-left: 1.75rem;
+  margin: 0.5rem 0;
+}
+
+.editor :global(.ProseMirror ol) {
+  list-style-type: decimal;
+  padding-left: 1.75rem;
+  margin: 0.5rem 0;
+}
+
+.editor :global(.ProseMirror li) {
+  margin: 0.2rem 0;
+}
+
+.editor :global(.ProseMirror li p) {
+  margin: 0;
+}
+
+.editor :global(.ProseMirror strong) {
+  font-weight: 700;
+}
+
+.editor :global(.ProseMirror em) {
+  font-style: italic;
+}
+
+.editor :global(.ProseMirror u) {
+  text-decoration: underline;
+}
+
+.editor :global(.ProseMirror blockquote) {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: #64748b;
+}
+
+/* Placeholder text */
+.editor :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Comment highlight — active (clicked) */
+.editor :global(span[data-comment-id].active-comment) {
+  background-color: #fde047;
+  border-bottom-color: #ca8a04;
+}
