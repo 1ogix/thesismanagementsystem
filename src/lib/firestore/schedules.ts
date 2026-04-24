@@ -2,6 +2,8 @@ import {
   collection,
   addDoc,
   getDocs,
+  doc,
+  updateDoc,
   query,
   where,
   Timestamp,
@@ -28,6 +30,16 @@ export async function getSchedulesByThesis(
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as DefenseSchedule));
+}
+
+export async function updateSchedule(
+  scheduleId: string,
+  data: Pick<DefenseSchedule, "scheduledAt" | "venue">
+): Promise<void> {
+  await updateDoc(doc(db, "defenseSchedules", scheduleId), {
+    scheduledAt: data.scheduledAt,
+    venue: data.venue,
+  });
 }
 
 export async function getAllSchedules(): Promise<DefenseSchedule[]> {

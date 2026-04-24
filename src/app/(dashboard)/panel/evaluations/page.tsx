@@ -6,17 +6,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { getThesesByPanel } from "@/lib/firestore/panel";
 import { getThesis } from "@/lib/firestore/theses";
 import { getEvaluationByPanel } from "@/lib/firestore/panel";
-import { PanelAssignment, Thesis, STAGE_LABELS } from "@/types";
+import { getSchedulesByThesis } from "@/lib/firestore/schedules";
+import { PanelAssignment, Thesis, DefenseSchedule, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardCheck, ArrowRight, CheckCircle } from "lucide-react";
+import { ClipboardCheck, ArrowRight, CheckCircle, CalendarDays } from "lucide-react";
 
 interface AssignmentRow extends PanelAssignment {
   thesis: Thesis | null;
   hasEvaluated: boolean;
   score: number | null;
+  schedule: DefenseSchedule | null;
 }
 
 export default function EvaluationsPage() {
@@ -31,11 +33,14 @@ export default function EvaluationsPage() {
         assigns.map(async (a) => {
           const thesis = await getThesis(a.thesisId);
           const evaluation = await getEvaluationByPanel(a.thesisId, tmsUser.uid, a.stage);
+          const schedules = await getSchedulesByThesis(a.thesisId);
+          const schedule = schedules.find((s) => s.stage === a.stage) ?? null;
           return {
             ...a,
             thesis,
             hasEvaluated: !!evaluation,
             score: evaluation?.overallScore ?? null,
+            schedule,
           };
         })
       );
@@ -75,7 +80,16 @@ export default function EvaluationsPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="flex justify-end">
+              <CardContent className="flex items-center justify-between">
+                {row.schedule ? (
+                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <CalendarDays className="w-3 h-3 shrink-0" />
+                    {row.schedule.scheduledAt.toDate().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })}
+                    {" · "}{row.schedule.venue}
+                  </p>
+                ) : (
+                  <span />
+                )}
                 <Link href={`/panel/thesis/${row.thesisId}/evaluate?stage=${row.stage}`}>
                   <Button
                     size="sm"

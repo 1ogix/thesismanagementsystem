@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { getAllTheses } from "@/lib/firestore/theses";
-import { applyAsAdviser, hasAdviserApplied } from "@/lib/firestore/adviser";
+import { applyAsAdviser, getApplicationsByAdviser } from "@/lib/firestore/adviser";
 import { createNotificationsBulk } from "@/lib/firestore/notifications";
 import { getGroup } from "@/lib/firestore/groups";
 import { Thesis, STAGE_LABELS } from "@/types";
@@ -13,7 +13,7 @@ import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle, BookOpen } from "lucide-react";
+import { CheckCircle, BookOpen, UserCheck } from "lucide-react";
 
 interface ThesisWithState extends Thesis {
   hasApplied: boolean;
@@ -29,13 +29,13 @@ export default function AvailableThesesPage() {
   useEffect(() => {
     if (!tmsUser) return;
     getAllTheses().then(async (all) => {
+      const myApplications = await getApplicationsByAdviser(tmsUser.uid);
       const withState = await Promise.all(
         all.map(async (t) => {
           const group = await getGroup(t.groupId);
-          const applied = await hasAdviserApplied(t.id, tmsUser.uid);
           return {
             ...t,
-            hasApplied: applied,
+            hasApplied: myApplications.some((a) => a.thesisId === t.id),
             hasAdviser: !!group?.adviserId,
           };
         })
@@ -44,6 +44,7 @@ export default function AvailableThesesPage() {
       setLoading(false);
     }).catch((err) => {
       console.error("Failed to load available theses:", err);
+      toast.error(`Error loading theses: ${err?.message ?? String(err)}`);
       setLoading(false);
     });
   }, [tmsUser]);
@@ -54,7 +55,6 @@ export default function AvailableThesesPage() {
     try {
       await applyAsAdviser(thesisId, tmsUser.uid);
 
-      // Notify admins (simplified: notify via thesis group members)
       const thesis = theses.find((t) => t.id === thesisId);
       if (thesis) {
         const group = await getGroup(thesis.groupId);
@@ -79,30 +79,28 @@ export default function AvailableThesesPage() {
     }
   }
 
-  const openTheses = theses.filter((t) => !t.hasAdviser);
-
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Open Theses</h1>
-        <p className="text-slate-500 mt-1">Volunteer to advise a student thesis group.</p>
+        <h1 className="text-2xl font-bold text-slate-900">All Theses</h1>
+        <p className="text-slate-500 mt-1">Browse theses and volunteer to advise a group.</p>
       </div>
 
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}
         </div>
-      ) : openTheses.length === 0 ? (
+      ) : theses.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">All theses have advisers assigned.</p>
+            <p className="text-slate-500 text-sm">No theses have been created yet.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {openTheses.map((thesis) => (
-            <Card key={thesis.id}>
+          {theses.map((thesis) => (
+            <Card key={thesis.id} className={thesis.hasAdviser ? "bg-slate-50 opacity-75" : ""}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base">{thesis.title}</CardTitle>
@@ -115,11 +113,20 @@ export default function AvailableThesesPage() {
                   <Badge variant="outline" className="text-xs">
                     {STAGE_LABELS[thesis.currentStage]}
                   </Badge>
+                  {thesis.hasAdviser && (
+                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                      <UserCheck className="w-3 h-3" />
+                      Adviser Assigned
+                    </Badge>
+                  )}
                 </div>
-                {thesis.hasApplied ? (
-                  <div className="flex items-center gap-1 text-sm text-green-600">
-                    <CheckCircle className="w-4 h-4" />
-                    Applied — Pending Approval
+                {thesis.hasAdviser ? null : thesis.hasApplied ? (
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 text-sm text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      Applied — Pending Approval
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">The admin will review your application.</p>
                   </div>
                 ) : (
                   <Button

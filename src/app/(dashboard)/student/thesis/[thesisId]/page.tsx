@@ -5,14 +5,19 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getThesis } from "@/lib/firestore/theses";
 import { getSubmissionsByThesis } from "@/lib/firestore/submissions";
+import { getEvaluationsByThesis } from "@/lib/firestore/panel";
+import { getSchedulesByThesis } from "@/lib/firestore/schedules";
+import { getUsersByIds } from "@/lib/firestore/users";
 import { getSignedUrl } from "@/lib/supabase";
-import { Thesis, Submission, STAGE_LABELS } from "@/types";
+import { Thesis, Submission, Evaluation, DefenseSchedule, TmsUser, STAGE_LABELS, EVALUATION_CRITERIA } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { StageTimeline } from "@/components/thesis/StageTimeline";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, ExternalLink, ArrowLeft } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { FileText, ExternalLink, ArrowLeft, Star, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ThesisDetailPage() {
@@ -20,10 +25,24 @@ export default function ThesisDetailPage() {
   const thesisId = params.thesisId as string;
   const [thesis, setThesis] = useState<Thesis | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [schedules, setSchedules] = useState<DefenseSchedule[]>([]);
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [panelUsers, setPanelUsers] = useState<Record<string, TmsUser>>({});
 
   useEffect(() => {
     getThesis(thesisId).then(setThesis);
     getSubmissionsByThesis(thesisId).then(setSubmissions);
+    getSchedulesByThesis(thesisId).then(setSchedules);
+    getEvaluationsByThesis(thesisId).then(async (evals) => {
+      setEvaluations(evals);
+      if (evals.length > 0) {
+        const uids = [...new Set(evals.map((e) => e.panelMemberId))];
+        const users = await getUsersByIds(uids);
+        const map: Record<string, TmsUser> = {};
+        users.forEach((u) => { map[u.uid] = u; });
+        setPanelUsers(map);
+      }
+    });
   }, [thesisId]);
 
   async function openDocument(path: string) {
@@ -62,6 +81,31 @@ export default function ThesisDetailPage() {
           <p className="text-sm text-slate-600">{thesis.abstract}</p>
         </CardContent>
       </Card>
+
+      {/* Defense Schedules */}
+      {schedules.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-blue-500" />
+              Defense Schedule
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {schedules.map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="text-sm font-medium">
+                    {s.scheduledAt.toDate().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })}
+                  </p>
+                  <p className="text-xs text-slate-500">{s.venue}</p>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">{STAGE_LABELS[s.stage]}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Submissions per stage */}
       {(["proposal", "pre_oral", "final_oral", "manuscript"] as const).map((stage) => {
@@ -104,6 +148,52 @@ export default function ThesisDetailPage() {
           </Card>
         );
       })}
+
+      {/* Panel Evaluations */}
+      {evaluations.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-slate-700 flex items-center gap-2">
+            <Star className="w-4 h-4 text-yellow-500" />
+            Panel Evaluations
+          </h2>
+          {evaluations.map((ev) => {
+            const panelName = panelUsers[ev.panelMemberId]?.displayName ?? "Panel Member";
+            const criteria = EVALUATION_CRITERIA[ev.stage];
+            return (
+              <Card key={ev.id} className="border-blue-100">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{panelName}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">{STAGE_LABELS[ev.stage]}</span>
+                      <span className="text-sm font-bold text-blue-600">{ev.overallScore}/100</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 gap-1">
+                    {criteria.map((criterion) => (
+                      <div key={criterion} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-600">{criterion}</span>
+                        <span className="font-medium text-slate-800">{ev.grades[criterion] ?? "—"}/100</span>
+                      </div>
+                    ))}
+                  </div>
+                  {ev.comments && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 mb-1">Comments</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{ev.comments}</p>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {(thesis.stageStatus === "draft" ||
         thesis.stageStatus === "revision_required") && (

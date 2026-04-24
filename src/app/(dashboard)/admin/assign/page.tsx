@@ -1,18 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllTheses, getThesis, updateThesisStatus } from "@/lib/firestore/theses";
+import {
+  getAllTheses,
+  getThesis,
+  updateThesisStatus,
+} from "@/lib/firestore/theses";
 import { getUsersByRole } from "@/lib/firestore/users";
-import { assignAdviserByAdmin, getApplicationsByThesis, updateApplicationStatus } from "@/lib/firestore/adviser";
+import {
+  assignAdviserByAdmin,
+  getApplicationsByThesis,
+  updateApplicationStatus,
+} from "@/lib/firestore/adviser";
 import { assignPanelMember, getPanelByThesis } from "@/lib/firestore/panel";
 import { assignAdviserToGroup, getGroup } from "@/lib/firestore/groups";
 import { createNotificationsBulk } from "@/lib/firestore/notifications";
 import { Thesis, TmsUser, ThesisStage, STAGE_LABELS } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,7 +51,9 @@ export default function AssignPage() {
   const [selectedStage, setSelectedStage] = useState<ThesisStage>("proposal");
 
   // volunteer applications
-  const [applications, setApplications] = useState<{ id: string; adviserId: string; adviserName: string }[]>([]);
+  const [applications, setApplications] = useState<
+    { id: string; adviserId: string; adviserName: string }[]
+  >([]);
 
   const [assigning, setAssigning] = useState(false);
 
@@ -51,14 +71,21 @@ export default function AssignPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedThesis) { setApplications([]); return; }
+    if (!selectedThesis) {
+      setApplications([]);
+      return;
+    }
     getApplicationsByThesis(selectedThesis).then(async (apps) => {
       const pending = apps.filter((a) => a.status === "pending");
       const withNames = await Promise.all(
         pending.map(async (a) => {
           const adv = advisers.find((u) => u.uid === a.adviserId);
-          return { id: a.id, adviserId: a.adviserId, adviserName: adv?.displayName ?? a.adviserId };
-        })
+          return {
+            id: a.id,
+            adviserId: a.adviserId,
+            adviserName: adv?.displayName ?? a.adviserId,
+          };
+        }),
       );
       setApplications(withNames);
     });
@@ -84,7 +111,7 @@ export default function AssignPage() {
           [...group.members, selectedAdviser],
           "assignment",
           `Adviser ${adviserUser?.displayName ?? ""} has been assigned to "${thesis.title}"`,
-          selectedThesis
+          selectedThesis,
         );
       }
       toast.success("Adviser assigned successfully.");
@@ -110,7 +137,7 @@ export default function AssignPage() {
             [...group.members, adviserId],
             "assignment",
             `Adviser ${adviserUser?.displayName ?? ""} approved for "${thesis.title}"`,
-            selectedThesis
+            selectedThesis,
           );
         }
       }
@@ -140,7 +167,12 @@ export default function AssignPage() {
         return;
       }
 
-      await assignPanelMember(selectedThesis, selectedPanel, selectedStage, "admin");
+      await assignPanelMember(
+        selectedThesis,
+        selectedPanel,
+        selectedStage,
+        "admin",
+      );
 
       const group = await getGroup(thesis.groupId);
       if (group) {
@@ -149,7 +181,7 @@ export default function AssignPage() {
           [...group.members, selectedPanel],
           "assignment",
           `${panelUser?.displayName ?? "A panelist"} assigned to "${thesis.title}" — ${STAGE_LABELS[selectedStage]}`,
-          selectedThesis
+          selectedThesis,
         );
       }
 
@@ -180,7 +212,9 @@ export default function AssignPage() {
         <TabsContent value="adviser" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Assign Adviser to Thesis</CardTitle>
+              <CardTitle className="text-base">
+                Assign Adviser to Thesis
+              </CardTitle>
               <CardDescription>
                 Directly assign an adviser or approve volunteer applications.
               </CardDescription>
@@ -188,14 +222,17 @@ export default function AssignPage() {
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Select Thesis</label>
-                <Select onValueChange={(v) => setSelectedThesis(v ?? "")} value={selectedThesis}>
+                <Select
+                  onValueChange={(v) => setSelectedThesis(v ?? "")}
+                  value={selectedThesis}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a thesis..." />
                   </SelectTrigger>
                   <SelectContent>
                     {thesisOptions.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
-                        <span className="truncate max-w-[280px] block">{t.label}</span>
+                        {t.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -214,14 +251,21 @@ export default function AssignPage() {
               {/* Volunteer applications */}
               {applications.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-slate-700">Volunteer Applications</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    Volunteer Applications
+                  </p>
                   {applications.map((app) => (
-                    <div key={app.id} className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50 border-yellow-200">
+                    <div
+                      key={app.id}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50 border-yellow-200"
+                    >
                       <p className="text-sm font-medium">{app.adviserName}</p>
                       <Button
                         size="sm"
                         className="bg-green-600 hover:bg-green-500"
-                        onClick={() => handleApproveVolunteer(app.id, app.adviserId)}
+                        onClick={() =>
+                          handleApproveVolunteer(app.id, app.adviserId)
+                        }
                         disabled={assigning}
                       >
                         <CheckCircle className="w-3 h-3 mr-1" />
@@ -234,7 +278,10 @@ export default function AssignPage() {
 
               <div className="space-y-1">
                 <label className="text-sm font-medium">Select Adviser</label>
-                <Select onValueChange={(v) => setSelectedAdviser(v ?? "")} value={selectedAdviser}>
+                <Select
+                  onValueChange={(v) => setSelectedAdviser(v ?? "")}
+                  value={selectedAdviser}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose an adviser..." />
                   </SelectTrigger>
@@ -270,14 +317,17 @@ export default function AssignPage() {
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Select Thesis</label>
-                <Select onValueChange={(v) => setSelectedThesis(v ?? "")} value={selectedThesis}>
+                <Select
+                  onValueChange={(v) => setSelectedThesis(v ?? "")}
+                  value={selectedThesis}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a thesis..." />
                   </SelectTrigger>
                   <SelectContent>
                     {thesisOptions.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
-                        <span className="truncate max-w-[280px] block">{t.label}</span>
+                        {t.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -294,16 +344,25 @@ export default function AssignPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(["proposal", "pre_oral", "final_oral"] as ThesisStage[]).map((s) => (
-                      <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                    {(
+                      ["proposal", "pre_oral", "final_oral"] as ThesisStage[]
+                    ).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {STAGE_LABELS[s]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium">Select Panel Member</label>
-                <Select onValueChange={(v) => setSelectedPanel(v ?? "")} value={selectedPanel}>
+                <label className="text-sm font-medium">
+                  Select Panel Member
+                </label>
+                <Select
+                  onValueChange={(v) => setSelectedPanel(v ?? "")}
+                  value={selectedPanel}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a panelist..." />
                   </SelectTrigger>
