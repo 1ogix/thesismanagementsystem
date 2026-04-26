@@ -6,7 +6,7 @@ import { getPanelByThesis } from "@/lib/firestore/panel";
 import { createSchedule, updateSchedule, getAllSchedules } from "@/lib/firestore/schedules";
 import { createNotificationsBulk } from "@/lib/firestore/notifications";
 import { getGroup } from "@/lib/firestore/groups";
-import { Thesis, DefenseSchedule, ThesisStage, STAGE_LABELS } from "@/types";
+import { Thesis, DefenseSchedule, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +149,9 @@ export default function SchedulesPage() {
   }
 
   const thesisMap = Object.fromEntries(theses.map((t) => [t.id, t]));
+  const thesisLabelById = Object.fromEntries(
+    theses.map((t) => [t.id, t.title || "Untitled thesis"]),
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -167,7 +170,13 @@ export default function SchedulesPage() {
               <Label>Thesis</Label>
               <Select onValueChange={(v) => setSelectedThesis(v ?? "")} value={selectedThesis}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a thesis..." />
+                  <SelectValue placeholder="Select a thesis...">
+                    {(value) =>
+                      typeof value === "string" && value
+                        ? (thesisLabelById[value] ?? "Untitled thesis")
+                        : "Select a thesis..."
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {theses.map((t) => (

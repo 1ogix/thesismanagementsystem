@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getAllTheses,
-  getThesis,
-  updateThesisStatus,
-} from "@/lib/firestore/theses";
+import { getAllTheses, getThesis } from "@/lib/firestore/theses";
 import { getUsersByRole } from "@/lib/firestore/users";
 import {
   assignAdviserByAdmin,
@@ -196,7 +192,25 @@ export default function AssignPage() {
 
   if (loading) return <Skeleton className="h-64 w-full max-w-3xl" />;
 
-  const thesisOptions = theses.map((t) => ({ value: t.id, label: t.title }));
+  const thesisOptions = theses.map((t) => ({
+    value: t.id,
+    label: t.title || "Untitled thesis",
+  }));
+  const thesisLabelById = Object.fromEntries(
+    thesisOptions.map((t) => [t.value, t.label]),
+  );
+  const adviserLabelById = Object.fromEntries(
+    advisers.map((a) => [
+      a.uid,
+      `${a.displayName}${a.department ? ` — ${a.department}` : ""}`,
+    ]),
+  );
+  const panelistLabelById = Object.fromEntries(
+    panelists.map((p) => [
+      p.uid,
+      `${p.displayName}${p.department ? ` — ${p.department}` : ""}`,
+    ]),
+  );
   const selectedThesisData = theses.find((t) => t.id === selectedThesis);
 
   return (
@@ -227,7 +241,13 @@ export default function AssignPage() {
                   value={selectedThesis}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a thesis..." />
+                    <SelectValue placeholder="Choose a thesis...">
+                      {(value) =>
+                        typeof value === "string" && value
+                          ? (thesisLabelById[value] ?? "Untitled thesis")
+                          : "Choose a thesis..."
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {thesisOptions.map((t) => (
@@ -283,7 +303,13 @@ export default function AssignPage() {
                   value={selectedAdviser}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose an adviser..." />
+                    <SelectValue placeholder="Choose an adviser...">
+                      {(value) =>
+                        typeof value === "string" && value
+                          ? (adviserLabelById[value] ?? "Unknown adviser")
+                          : "Choose an adviser..."
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {advisers.map((a) => (
@@ -322,7 +348,13 @@ export default function AssignPage() {
                   value={selectedThesis}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a thesis..." />
+                    <SelectValue placeholder="Choose a thesis...">
+                      {(value) =>
+                        typeof value === "string" && value
+                          ? (thesisLabelById[value] ?? "Untitled thesis")
+                          : "Choose a thesis..."
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {thesisOptions.map((t) => (
@@ -364,7 +396,13 @@ export default function AssignPage() {
                   value={selectedPanel}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a panelist..." />
+                    <SelectValue placeholder="Choose a panelist...">
+                      {(value) =>
+                        typeof value === "string" && value
+                          ? (panelistLabelById[value] ?? "Unknown panelist")
+                          : "Choose a panelist..."
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {panelists.map((p) => (

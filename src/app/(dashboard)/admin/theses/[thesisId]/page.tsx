@@ -4,18 +4,32 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getThesis, updateThesisStatus, advanceThesisStage, completeThesis, deleteThesis } from "@/lib/firestore/theses";
+import { getUsersByRole } from "@/lib/firestore/users";
 import { getGroup, updateGroupStatus } from "@/lib/firestore/groups";
 import { getSubmissionsByThesis } from "@/lib/firestore/submissions";
-import { getPanelByThesis, getEvaluationsByThesis } from "@/lib/firestore/panel";
+import { getEvaluationsByThesis } from "@/lib/firestore/panel";
+import {
+  assignAdviserByAdmin,
+  getApplicationsByThesis,
+  updateApplicationStatus,
+} from "@/lib/firestore/adviser";
+import { assignAdviserToGroup } from "@/lib/firestore/groups";
 import { getSignedUrl, deleteThesisDocuments } from "@/lib/supabase";
 import { createNotificationsBulk } from "@/lib/firestore/notifications";
-import { Thesis, Group, Submission, PanelAssignment, Evaluation, STAGE_LABELS, StageStatus } from "@/types";
+import { Thesis, Group, Submission, Evaluation, STAGE_LABELS, StageStatus, TmsUser } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { StageTimeline } from "@/components/thesis/StageTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,9 +52,14 @@ export default function AdminThesisDetailPage() {
   const [thesis, setThesis] = useState<Thesis | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [panelAssignments, setPanelAssignments] = useState<PanelAssignment[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [advisers, setAdvisers] = useState<TmsUser[]>([]);
+  const [selectedAdviser, setSelectedAdviser] = useState("");
+  const [applications, setApplications] = useState<
+    { id: string; adviserId: string; adviserName: string }[]
+  >([]);
   const [updating, setUpdating] = useState(false);
+  const [assigningAdviser, setAssigningAdviser] = useState(false);
 
   useEffect(() => {
     getThesis(thesisId).then((t) => {
@@ -48,9 +67,30 @@ export default function AdminThesisDetailPage() {
       if (t) getGroup(t.groupId).then(setGroup);
     });
     getSubmissionsByThesis(thesisId).then(setSubmissions);
-    getPanelByThesis(thesisId).then(setPanelAssignments);
     getEvaluationsByThesis(thesisId).then(setEvaluations);
+    getUsersByRole("adviser").then(setAdvisers);
   }, [thesisId]);
+
+  useEffect(() => {
+    if (group?.adviserId || advisers.length === 0) {
+      setApplications([]);
+      return;
+    }
+
+    getApplicationsByThesis(thesisId).then((apps) => {
+      const pending = apps.filter((a) => a.status === "pending");
+      setApplications(
+        pending.map((a) => {
+          const adviser = advisers.find((user) => user.uid === a.adviserId);
+          return {
+            id: a.id,
+            adviserId: a.adviserId,
+            adviserName: adviser?.displayName ?? a.adviserId,
+          };
+        }),
+      );
+    });
+  }, [advisers, group?.adviserId, thesisId]);
 
   async function openDocument(path: string) {
     const { url, error } = await getSignedUrl(path);
@@ -139,9 +179,79 @@ export default function AdminThesisDetailPage() {
     }
   }
 
+  async function handleAssignAdviser() {
+    if (!thesis || !selectedAdviser) {
+      toast.error("Select an adviser.");
+      return;
+    }
+
+    setAssigningAdviser(true);
+    try {
+      const targetGroup = group ?? await getGroup(thesis.groupId);
+      if (!targetGroup) {
+        toast.error("Group not found for this thesis.");
+        return;
+      }
+
+      await assignAdviserByAdmin(thesisId, selectedAdviser);
+      await assignAdviserToGroup(targetGroup.id, selectedAdviser);
+
+      const adviserUser = advisers.find((adviser) => adviser.uid === selectedAdviser);
+      await createNotificationsBulk(
+        [...targetGroup.members, selectedAdviser],
+        "assignment",
+        `Adviser ${adviserUser?.displayName ?? ""} has been assigned to "${thesis.title}"`,
+        thesisId,
+      );
+
+      setGroup({ ...targetGroup, adviserId: selectedAdviser });
+      setSelectedAdviser("");
+      setApplications([]);
+      toast.success("Adviser assigned successfully.");
+    } catch {
+      toast.error("Failed to assign adviser.");
+    } finally {
+      setAssigningAdviser(false);
+    }
+  }
+
+  async function handleApproveVolunteer(appId: string, adviserId: string) {
+    if (!thesis) return;
+
+    setAssigningAdviser(true);
+    try {
+      const targetGroup = group ?? await getGroup(thesis.groupId);
+      if (!targetGroup) {
+        toast.error("Group not found for this thesis.");
+        return;
+      }
+
+      await updateApplicationStatus(appId, "approved");
+      await assignAdviserToGroup(targetGroup.id, adviserId);
+
+      const adviserUser = advisers.find((adviser) => adviser.uid === adviserId);
+      await createNotificationsBulk(
+        [...targetGroup.members, adviserId],
+        "assignment",
+        `Adviser ${adviserUser?.displayName ?? ""} approved for "${thesis.title}"`,
+        thesisId,
+      );
+
+      setGroup({ ...targetGroup, adviserId });
+      setApplications([]);
+      setSelectedAdviser("");
+      toast.success("Volunteer approved.");
+    } catch {
+      toast.error("Failed to approve volunteer.");
+    } finally {
+      setAssigningAdviser(false);
+    }
+  }
+
   const avgScore = evaluations.length > 0
     ? Math.round(evaluations.reduce((sum, e) => sum + e.overallScore, 0) / evaluations.length)
     : null;
+  const currentAdviser = advisers.find((adviser) => adviser.uid === group?.adviserId);
 
   if (!thesis) return <Skeleton className="h-64 w-full max-w-4xl" />;
 
@@ -172,6 +282,83 @@ export default function AdminThesisDetailPage() {
           <CardDescription>Manage this thesis&apos; stage and status.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-slate-800">Adviser Assignment</p>
+              {group?.adviserId ? (
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700"
+                >
+                  {currentAdviser?.displayName ?? "Adviser assigned"}
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-amber-700"
+                >
+                  No adviser assigned
+                </Badge>
+              )}
+            </div>
+
+            {!group?.adviserId && (
+              <>
+                {applications.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-700">
+                      Volunteer Applications
+                    </p>
+                    {applications.map((app) => (
+                      <div
+                        key={app.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3"
+                      >
+                        <p className="text-sm font-medium text-slate-900">{app.adviserName}</p>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-500"
+                          onClick={() => handleApproveVolunteer(app.id, app.adviserId)}
+                          disabled={assigningAdviser}
+                        >
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Approve
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Assign Adviser</label>
+                  <Select
+                    onValueChange={(value) => setSelectedAdviser(value ?? "")}
+                    value={selectedAdviser}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose an adviser..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {advisers.map((adviser) => (
+                        <SelectItem key={adviser.uid} value={adviser.uid}>
+                          {adviser.displayName} — {adviser.department}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  className="bg-blue-600 hover:bg-blue-500"
+                  onClick={handleAssignAdviser}
+                  disabled={assigningAdviser || !selectedAdviser}
+                >
+                  Assign Adviser
+                </Button>
+              </>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {(["under_review", "scheduled", "approved", "revision_required", "rejected"] as StageStatus[]).map((s) => (
               <Button

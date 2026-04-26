@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FirebaseError } from "firebase/app";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getUserDocument } from "@/lib/firestore/users";
@@ -33,6 +34,15 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${user.displayName}!`);
       router.push(`/${user.role}`);
     } catch (err: unknown) {
+      if (
+        err instanceof FirebaseError &&
+        err.code === "auth/invalid-credential"
+      ) {
+        console.log(err.message);
+        toast.error("User not found.");
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "Login failed.";
       toast.error(message);
     } finally {
