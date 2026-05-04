@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createUserDocument } from "@/lib/firestore/users";
 import { UserRole } from "@/types";
+import { getDefaultDashboardRoute, SELF_REGISTER_ROLES } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,10 +21,22 @@ import { BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLES: { value: UserRole; label: string; desc: string }[] = [
-  { value: "student", label: "Student", desc: "Submit thesis proposals and documents" },
-  { value: "adviser", label: "Adviser", desc: "Mentor and review student theses" },
-  { value: "panel", label: "Panel Member", desc: "Evaluate and grade thesis defenses" },
-];
+  {
+    value: "student",
+    label: "Student",
+    desc: "Submit thesis proposals and documents",
+  },
+  {
+    value: "adviser",
+    label: "Adviser",
+    desc: "Mentor and review student theses",
+  },
+  {
+    value: "panel",
+    label: "Panel Member",
+    desc: "Evaluate and grade thesis defenses",
+  },
+].filter((role) => SELF_REGISTER_ROLES.includes(role.value));
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -61,7 +74,7 @@ export default function RegisterPage() {
 
       document.cookie = `tms-role=${form.role}; path=/; max-age=604800`;
       toast.success("Account created!");
-      router.push(`/${form.role}`);
+      router.push(getDefaultDashboardRoute(form.role as UserRole));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Registration failed.";
       toast.error(message);

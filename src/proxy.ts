@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const ROLE_ROUTES: Record<string, string[]> = {
-  student: ["/student"],
-  adviser: ["/adviser"],
-  panel: ["/panel"],
-  admin: ["/admin"],
-};
+import {
+  getAllowedRoutePrefixes,
+  getDefaultDashboardRoute,
+} from "@/lib/roles";
+import { UserRole } from "@/types";
 
 const PUBLIC_ROUTES = ["/", "/auth/login", "/auth/register"];
 
@@ -17,7 +15,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const sessionRole = request.cookies.get("tms-role")?.value;
+  const sessionRole = request.cookies.get("tms-role")?.value as UserRole | undefined;
 
   // Not authenticated — redirect to login
   if (!sessionRole) {
@@ -25,12 +23,23 @@ export function proxy(request: NextRequest) {
   }
 
   // Check role-based access
-  for (const [role, prefixes] of Object.entries(ROLE_ROUTES)) {
-    for (const prefix of prefixes) {
-      if (pathname.startsWith(prefix) && sessionRole !== role && sessionRole !== "admin") {
-        return NextResponse.redirect(new URL(`/${sessionRole}`, request.url));
-      }
-    }
+  const protectedPrefixes = ["/student", "/adviser", "/panel", "/admin"];
+  const requestedProtected = protectedPrefixes.find((prefix) =>
+    pathname.startsWith(prefix),
+  );
+
+  if (!requestedProtected) {
+    return NextResponse.next();
+  }
+
+  const allowedPrefixes = getAllowedRoutePrefixes(sessionRole);
+  const isAllowed = sessionRole === "admin"
+    || allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
+
+  if (!isAllowed) {
+    return NextResponse.redirect(
+      new URL(getDefaultDashboardRoute(sessionRole), request.url),
+    );
   }
 
   return NextResponse.next();

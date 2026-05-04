@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// @ts-ignore
+import Link from "next/link";
 import "./homepage.css";
 
 type RoleKey = "student" | "adviser" | "panel" | "admin";
@@ -170,7 +170,7 @@ export default function LandingPage() {
 
       {/* NAV */}
       <nav id="navbar">
-        <a href="/" className="nav-logo">
+        <Link href="/" className="nav-logo">
           <svg
             width="22"
             height="22"
@@ -183,7 +183,7 @@ export default function LandingPage() {
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
           </svg>
           ThesisHub
-        </a>
+        </Link>
         <div className="nav-links">
           <a href="#features" className="btn-ghost">
             Features

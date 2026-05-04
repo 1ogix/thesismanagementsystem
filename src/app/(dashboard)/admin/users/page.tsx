@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { getAllUsers, updateUserRole } from "@/lib/firestore/users";
 import { TmsUser, UserRole } from "@/types";
+import { ADMIN_ASSIGNABLE_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,6 +18,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   student: "bg-blue-100 text-blue-700",
   adviser: "bg-green-100 text-green-700",
   panel: "bg-purple-100 text-purple-700",
+  adviser_panel: "bg-emerald-100 text-emerald-700",
   admin: "bg-red-100 text-red-700",
 };
 
@@ -102,20 +103,26 @@ export default function UsersPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge className={`text-xs ${ROLE_COLORS[user.role]}`} variant="outline">
-                      {user.role}
+                      {ROLE_LABELS[user.role]}
                     </Badge>
                     <Select
-                      defaultValue={user.role}
+                      value={user.role}
                       onValueChange={(v) => handleRoleChange(user.uid, v as UserRole)}
                       disabled={updating === user.uid}
                     >
-                      <SelectTrigger className="w-28 h-7 text-xs">
-                        <SelectValue />
+                      <SelectTrigger className="w-40 h-7 text-xs">
+                        <SelectValue>
+                          {(value) =>
+                            typeof value === "string"
+                              ? (ROLE_LABELS[value as UserRole] ?? value)
+                              : "Select role"
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {(["student", "adviser", "panel", "admin"] as UserRole[]).map((r) => (
+                        {ADMIN_ASSIGNABLE_ROLES.map((r) => (
                           <SelectItem key={r} value={r} className="text-xs capitalize">
-                            {r}
+                            {ROLE_LABELS[r]}
                           </SelectItem>
                         ))}
                       </SelectContent>

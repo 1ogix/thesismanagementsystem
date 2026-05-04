@@ -7,6 +7,7 @@ import { FirebaseError } from "firebase/app";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getUserDocument } from "@/lib/firestore/users";
+import { getDefaultDashboardRoute } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,7 @@ export default function LoginPage() {
       document.cookie = `tms-role=${user.role}; path=/; max-age=604800`;
 
       toast.success(`Welcome back, ${user.displayName}!`);
-      router.push(`/${user.role}`);
+      router.push(getDefaultDashboardRoute(user.role));
     } catch (err: unknown) {
       if (
         err instanceof FirebaseError &&

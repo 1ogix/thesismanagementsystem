@@ -7,6 +7,7 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
+import { ROLE_LABELS } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,10 @@ import {
 import { UserRole } from "@/types";
 import { toast } from "sonner";
 
-const NAV_ITEMS: Record<UserRole, { href: string; label: string; icon: React.ElementType }[]> = {
+const NAV_ITEMS: Record<
+  UserRole,
+  { href: string; label: string; icon: React.ElementType }[]
+> = {
   student: [
     { href: "/student", label: "Dashboard", icon: LayoutDashboard },
     { href: "/student/group", label: "My Group", icon: Users },
@@ -33,6 +37,13 @@ const NAV_ITEMS: Record<UserRole, { href: string; label: string; icon: React.Ele
   ],
   panel: [
     { href: "/panel", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/panel/evaluations", label: "Evaluations", icon: ClipboardCheck },
+  ],
+  adviser_panel: [
+    { href: "/adviser", label: "Adviser Dashboard", icon: LayoutDashboard },
+    { href: "/adviser/available", label: "Open Theses", icon: Eye },
+    { href: "/adviser/assigned", label: "My Advisees", icon: FileText },
+    { href: "/panel", label: "Panel Dashboard", icon: ClipboardCheck },
     { href: "/panel/evaluations", label: "Evaluations", icon: ClipboardCheck },
   ],
   admin: [
@@ -76,12 +87,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition",
+              {navItems.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition",
                 pathname === href
                   ? "bg-blue-600 text-white"
                   : "text-slate-400 hover:text-white hover:bg-white/10"
@@ -102,7 +113,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-white truncate">{tmsUser?.displayName}</p>
-              <p className="text-xs text-slate-500 capitalize">{tmsUser?.role}</p>
+              <p className="text-xs text-slate-500">
+                {tmsUser?.role ? ROLE_LABELS[tmsUser.role] : "User"}
+              </p>
             </div>
             <Button
               size="icon"

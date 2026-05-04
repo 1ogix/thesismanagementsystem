@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAllTheses, getThesis } from "@/lib/firestore/theses";
-import { getUsersByRole } from "@/lib/firestore/users";
+import { getUsersByCapability } from "@/lib/firestore/users";
 import {
   assignAdviserByAdmin,
   getApplicationsByThesis,
@@ -56,8 +56,8 @@ export default function AssignPage() {
   useEffect(() => {
     Promise.all([
       getAllTheses(),
-      getUsersByRole("adviser"),
-      getUsersByRole("panel"),
+      getUsersByCapability("adviser"),
+      getUsersByCapability("panel"),
     ]).then(([ts, adv, pan]) => {
       setTheses(ts);
       setAdvisers(adv);
@@ -163,16 +163,18 @@ export default function AssignPage() {
         return;
       }
 
+      const panelUser = panelists.find((p) => p.uid === selectedPanel);
+
       await assignPanelMember(
         selectedThesis,
         selectedPanel,
+        panelUser?.displayName ?? "Panel Member",
         selectedStage,
         "admin",
       );
 
       const group = await getGroup(thesis.groupId);
       if (group) {
-        const panelUser = panelists.find((p) => p.uid === selectedPanel);
         await createNotificationsBulk(
           [...group.members, selectedPanel],
           "assignment",

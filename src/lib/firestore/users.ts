@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { TmsUser, UserRole } from "@/types";
+import { getRolesForCapability } from "@/lib/roles";
 
 export async function createUserDocument(
   uid: string,
@@ -39,7 +40,17 @@ export async function getAllUsers(): Promise<TmsUser[]> {
 }
 
 export async function getUsersByRole(role: UserRole): Promise<TmsUser[]> {
-  const q = query(collection(db, "users"), where("role", "==", role));
+  const roles = getRolesForCapability("direct", role);
+  const q = query(collection(db, "users"), where("role", "in", roles));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as TmsUser);
+}
+
+export async function getUsersByCapability(
+  capability: "adviser" | "panel",
+): Promise<TmsUser[]> {
+  const roles = getRolesForCapability(capability);
+  const q = query(collection(db, "users"), where("role", "in", roles));
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as TmsUser);
 }

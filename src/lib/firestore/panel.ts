@@ -12,12 +12,14 @@ import { PanelAssignment, Evaluation, ThesisStage } from "@/types";
 export async function assignPanelMember(
   thesisId: string,
   panelMemberId: string,
+  panelMemberName: string,
   stage: ThesisStage,
   assignedBy: string
 ): Promise<string> {
   const ref = await addDoc(collection(db, "panelAssignments"), {
     thesisId,
     panelMemberId,
+    panelMemberName,
     stage,
     assignedBy,
     assignedAt: Timestamp.now(),

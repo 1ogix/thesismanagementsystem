@@ -102,6 +102,7 @@ export default function EvaluatePage() {
       await submitEvaluation({
         thesisId,
         panelMemberId: tmsUser.uid,
+        panelMemberName: tmsUser.displayName,
         stage,
         grades,
         overallScore,

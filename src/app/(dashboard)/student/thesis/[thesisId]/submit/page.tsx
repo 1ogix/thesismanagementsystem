@@ -17,6 +17,47 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, FileText, CheckCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 
+function getSubmissionActionLabel(stage: Thesis["currentStage"]) {
+  if (stage === "pre_oral") return "Submit Pre-Oral Paper";
+  if (stage === "final_oral") return "Submit Final Oral Paper";
+  if (stage === "manuscript") return "Submit Final Manuscript";
+  return "Submit Proposal Paper";
+}
+
+function getStageUploadDescription(stage: Thesis["currentStage"]) {
+  if (stage === "pre_oral") {
+    return "Upload the revised PDF for the Pre-Oral Defense stage. This should reflect updates made after proposal approval and adviser feedback.";
+  }
+  if (stage === "final_oral") {
+    return "Upload the revised PDF for the Final Oral Defense stage. Previous stage files are preserved as separate versions.";
+  }
+  if (stage === "manuscript") {
+    return "Upload the final manuscript PDF for the last submission stage.";
+  }
+  return "Upload a PDF document for this stage. Previous versions are preserved.";
+}
+
+function getBlockedStageMessage(stageStatus: Thesis["stageStatus"]) {
+  switch (stageStatus) {
+    case "submitted":
+      return "Your latest submission is waiting for adviser review.";
+    case "under_review":
+      return "Your adviser is currently reviewing the paper.";
+    case "scheduled":
+      return "Your defense is already scheduled. Wait for the scheduled review to finish.";
+    case "evaluated":
+      return "Your defense has already been evaluated. Wait for the admin decision for this stage.";
+    case "approved":
+      return "This stage has already been approved. Wait for the next stage to open.";
+    case "completed":
+      return "Your thesis workflow has already been completed.";
+    case "rejected":
+      return "This stage was rejected. Please contact your adviser or admin for next steps.";
+    default:
+      return "Submissions are not open right now.";
+  }
+}
+
 export default function SubmitPage() {
   const params = useParams();
   const thesisId = params.thesisId as string;
@@ -93,12 +134,17 @@ export default function SubmitPage() {
   if (!thesis) return <Skeleton className="h-64 w-full max-w-2xl" />;
 
   const canSubmit = thesis.stageStatus === "draft" || thesis.stageStatus === "revision_required";
+  const submissionActionLabel = getSubmissionActionLabel(thesis.currentStage);
+  const stageUploadDescription = getStageUploadDescription(thesis.currentStage);
+  const blockedStageMessage = getBlockedStageMessage(thesis.stageStatus);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Submit Document</h1>
-        <p className="text-slate-500 mt-1">{thesis.title}</p>
+        <h1 className="text-2xl font-bold text-slate-900">{submissionActionLabel}</h1>
+        <p className="text-slate-500 mt-1">
+          {thesis.title} · {STAGE_LABELS[thesis.currentStage]}
+        </p>
       </div>
 
       <Card>
@@ -108,17 +154,22 @@ export default function SubmitPage() {
             <StatusBadge status={thesis.stageStatus} />
           </div>
           <CardDescription>
-            Upload a PDF document for this stage. Previous versions are preserved.
+            {stageUploadDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!canSubmit ? (
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
               <Clock className="w-5 h-5 text-slate-400" />
-              <p className="text-sm text-slate-600">
-                Submissions are not open right now. Current status:{" "}
-                <span className="font-medium capitalize">{thesis.stageStatus.replace("_", " ")}</span>
-              </p>
+              <div>
+                <p className="text-sm text-slate-700 font-medium">
+                  {STAGE_LABELS[thesis.currentStage]} is currently closed for submission.
+                </p>
+                <p className="text-sm text-slate-600">
+                  {blockedStageMessage} Current status:{" "}
+                  <span className="font-medium capitalize">{thesis.stageStatus.replace("_", " ")}</span>
+                </p>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleUpload} className="space-y-4">
@@ -164,7 +215,7 @@ export default function SubmitPage() {
                 className="w-full bg-blue-600 hover:bg-blue-500"
                 disabled={!file || uploading}
               >
-                Submit Document
+                {submissionActionLabel}
               </Button>
             </form>
           )}

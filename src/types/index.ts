@@ -1,6 +1,11 @@
 import { Timestamp } from "firebase/firestore";
 
-export type UserRole = "student" | "adviser" | "panel" | "admin";
+export type UserRole =
+  | "student"
+  | "adviser"
+  | "panel"
+  | "adviser_panel"
+  | "admin";
 
 export type ThesisStage = "proposal" | "pre_oral" | "final_oral" | "manuscript";
 
@@ -83,6 +88,7 @@ export interface PanelAssignment {
   id: string;
   thesisId: string;
   panelMemberId: string;
+  panelMemberName?: string;
   stage: ThesisStage;
   assignedAt: Timestamp;
   assignedBy: string; // admin UID
@@ -96,6 +102,7 @@ export interface Evaluation {
   id: string;
   thesisId: string;
   panelMemberId: string;
+  panelMemberName?: string;
   stage: ThesisStage;
   grades: EvaluationGrades;
   overallScore: number;

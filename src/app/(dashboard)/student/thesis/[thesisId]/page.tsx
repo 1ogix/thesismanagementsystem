@@ -20,6 +20,34 @@ import { Separator } from "@/components/ui/separator";
 import { FileText, ExternalLink, ArrowLeft, Star, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 
+function getSubmissionActionLabel(stage: Thesis["currentStage"]) {
+  if (stage === "pre_oral") return "Submit Pre-Oral Paper";
+  if (stage === "final_oral") return "Submit Final Oral Paper";
+  if (stage === "manuscript") return "Submit Final Manuscript";
+  return "Submit Proposal Paper";
+}
+
+function getBlockedStageMessage(stageStatus: Thesis["stageStatus"]) {
+  switch (stageStatus) {
+    case "submitted":
+      return "Your latest submission is waiting for adviser review.";
+    case "under_review":
+      return "Your adviser is currently reviewing the paper.";
+    case "scheduled":
+      return "Your defense is already scheduled. Wait for the scheduled review to finish.";
+    case "evaluated":
+      return "Your defense has already been evaluated. Wait for the admin decision for this stage.";
+    case "approved":
+      return "This stage has already been approved. Wait for the next stage to open.";
+    case "completed":
+      return "Your thesis workflow has already been completed.";
+    case "rejected":
+      return "This stage was rejected. Please contact your adviser or admin for next steps.";
+    default:
+      return null;
+  }
+}
+
 export default function ThesisDetailPage() {
   const params = useParams();
   const thesisId = params.thesisId as string;
@@ -52,6 +80,11 @@ export default function ThesisDetailPage() {
   }
 
   if (!thesis) return <Skeleton className="h-64 w-full max-w-3xl" />;
+
+  const canSubmit =
+    thesis.stageStatus === "draft" || thesis.stageStatus === "revision_required";
+  const blockedStageMessage = getBlockedStageMessage(thesis.stageStatus);
+  const submissionActionLabel = getSubmissionActionLabel(thesis.currentStage);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -195,15 +228,38 @@ export default function ThesisDetailPage() {
         </div>
       )}
 
-      {(thesis.stageStatus === "draft" ||
-        thesis.stageStatus === "revision_required") && (
-        <div className="flex justify-end">
-          <Link href={`/student/thesis/${thesisId}/submit`}>
-            <Button className="bg-blue-600 hover:bg-blue-500">
-              Submit Document for {STAGE_LABELS[thesis.currentStage]}
-            </Button>
-          </Link>
-        </div>
+      {canSubmit && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  Ready for {STAGE_LABELS[thesis.currentStage]} submission
+                </p>
+                <p className="text-xs text-blue-600">
+                  Upload a revised PDF for this stage. New submissions are versioned automatically.
+                </p>
+              </div>
+            </div>
+            <Link href={`/student/thesis/${thesisId}/submit`}>
+              <Button className="bg-blue-600 hover:bg-blue-500">
+                {submissionActionLabel}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {!canSubmit && blockedStageMessage && (
+        <Card className="border-slate-200 bg-slate-50">
+          <CardContent className="py-4">
+            <p className="text-sm font-medium text-slate-800">
+              {STAGE_LABELS[thesis.currentStage]} is currently closed for student submission
+            </p>
+            <p className="text-xs text-slate-500 mt-1">{blockedStageMessage}</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

@@ -18,6 +18,34 @@ import { FileText, ArrowRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { STAGE_LABELS } from "@/types";
 
+function getSubmissionActionLabel(stage: Thesis["currentStage"]) {
+  if (stage === "pre_oral") return "Submit Pre-Oral Paper";
+  if (stage === "final_oral") return "Submit Final Oral Paper";
+  if (stage === "manuscript") return "Submit Final Manuscript";
+  return "Submit Proposal Paper";
+}
+
+function getBlockedStageMessage(stageStatus: Thesis["stageStatus"]) {
+  switch (stageStatus) {
+    case "submitted":
+      return "Your latest submission is waiting for adviser review.";
+    case "under_review":
+      return "Your adviser is currently reviewing the paper.";
+    case "scheduled":
+      return "Your defense is already scheduled. Wait for the scheduled review to finish.";
+    case "evaluated":
+      return "Your defense has been evaluated. Wait for the admin decision for this stage.";
+    case "approved":
+      return "This stage has already been approved. Wait for the next stage to open.";
+    case "completed":
+      return "Your thesis workflow has already been completed.";
+    case "rejected":
+      return "This stage was rejected. Please contact your adviser or admin for next steps.";
+    default:
+      return null;
+  }
+}
+
 export default function ThesisPage() {
   const { tmsUser } = useAuth();
   const [group, setGroup] = useState<Group | null>(null);
@@ -74,6 +102,13 @@ export default function ThesisPage() {
   }
 
   if (thesis === undefined) return <Skeleton className="h-64 w-full max-w-3xl" />;
+
+  const canSubmit =
+    thesis?.stageStatus === "draft" || thesis?.stageStatus === "revision_required";
+  const blockedStageMessage = thesis ? getBlockedStageMessage(thesis.stageStatus) : null;
+  const submissionActionLabel = thesis
+    ? getSubmissionActionLabel(thesis.currentStage)
+    : "Submit Document";
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -191,7 +226,7 @@ export default function ThesisPage() {
           </Card>
 
           {/* Quick action */}
-          {(thesis.stageStatus === "draft" || thesis.stageStatus === "revision_required") && (
+          {canSubmit && (
             <Card className="border-blue-200 bg-blue-50">
               <CardContent className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
@@ -200,12 +235,35 @@ export default function ThesisPage() {
                     <p className="text-sm font-medium text-blue-800">
                       Ready to submit for {STAGE_LABELS[thesis.currentStage]}?
                     </p>
-                    <p className="text-xs text-blue-600">Upload your document to proceed.</p>
+                    <p className="text-xs text-blue-600">
+                      Upload the revised PDF for this stage. Each new upload is saved as a new version.
+                    </p>
                   </div>
                 </div>
                 <Link href={`/student/thesis/${thesis.id}/submit`}>
                   <Button className="bg-blue-600 hover:bg-blue-500" size="sm">
-                    Submit <ArrowRight className="w-3 h-3 ml-1" />
+                    {submissionActionLabel} <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
+          {!canSubmit && blockedStageMessage && (
+            <Card className="border-slate-200 bg-slate-50">
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">
+                      {STAGE_LABELS[thesis.currentStage]} is currently closed for student submission
+                    </p>
+                    <p className="text-xs text-slate-500">{blockedStageMessage}</p>
+                  </div>
+                </div>
+                <Link href={`/student/thesis/${thesis.id}`}>
+                  <Button variant="outline" size="sm">
+                    View Details <ArrowRight className="w-3 h-3 ml-1" />
                   </Button>
                 </Link>
               </CardContent>
