@@ -20,7 +20,9 @@ import {
 import { BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const ROLES: { value: UserRole; label: string; desc: string }[] = [
+type RegisterRoleOption = { value: UserRole; label: string; desc: string };
+
+const ALL_ROLES: RegisterRoleOption[] = [
   {
     value: "student",
     label: "Student",
@@ -36,7 +38,11 @@ const ROLES: { value: UserRole; label: string; desc: string }[] = [
     label: "Panel Member",
     desc: "Evaluate and grade thesis defenses",
   },
-].filter((role) => SELF_REGISTER_ROLES.includes(role.value));
+];
+
+const ROLES = ALL_ROLES.filter((role) =>
+  SELF_REGISTER_ROLES.includes(role.value),
+);
 
 export default function RegisterPage() {
   const router = useRouter();

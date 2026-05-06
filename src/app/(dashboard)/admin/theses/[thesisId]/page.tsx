@@ -302,55 +302,56 @@ export default function AdminThesisDetailPage() {
 
   if (!thesis) return <Skeleton className="h-64 w-full max-w-4xl" />;
 
+  const activeThesis = thesis;
   const currentStageSubmissions = submissions.filter(
-    (submission) => submission.stage === thesis.currentStage,
+    (submission) => submission.stage === activeThesis.currentStage,
   );
   const hasCurrentStageSubmission = currentStageSubmissions.length > 0;
   const latestCurrentStageSubmission = currentStageSubmissions[0] ?? null;
   const invalidWorkflowState =
     !hasCurrentStageSubmission &&
-    !["draft", "revision_required"].includes(thesis.stageStatus);
+    !["draft", "revision_required"].includes(activeThesis.stageStatus);
 
   function getWorkflowGuidance() {
     if (invalidWorkflowState) {
-      return `No ${STAGE_LABELS[thesis.currentStage]} submission exists yet, but this thesis is marked as ${thesis.stageStatus.replace("_", " ")}. The recommended fix is to reset this stage to Draft so the student can submit their paper.`;
+      return `No ${STAGE_LABELS[activeThesis.currentStage]} submission exists yet, but this thesis is marked as ${activeThesis.stageStatus.replace("_", " ")}. The recommended fix is to reset this stage to Draft so the student can submit their paper.`;
     }
 
     if (!hasCurrentStageSubmission) {
-      return `Waiting for the student to submit a PDF for ${STAGE_LABELS[thesis.currentStage]}.`;
+      return `Waiting for the student to submit a PDF for ${STAGE_LABELS[activeThesis.currentStage]}.`;
     }
 
-    if (thesis.stageStatus === "submitted") {
+    if (activeThesis.stageStatus === "submitted") {
       return "A student submission exists for this stage and is waiting for adviser review.";
     }
 
-    if (thesis.stageStatus === "revision_required") {
+    if (activeThesis.stageStatus === "revision_required") {
       return "The adviser requested revision. The student should upload a revised PDF for the current stage.";
     }
 
-    if (thesis.stageStatus === "scheduled") {
+    if (activeThesis.stageStatus === "scheduled") {
       return "This stage has already been scheduled. The next action normally happens after the defense or review event.";
     }
 
-    if (thesis.stageStatus === "evaluated") {
+    if (activeThesis.stageStatus === "evaluated") {
       return "Panel evaluation has been recorded. Admin may decide whether to advance or return the thesis for revision.";
     }
 
-    if (thesis.stageStatus === "approved") {
-      return thesis.currentStage === "manuscript"
+    if (activeThesis.stageStatus === "approved") {
+      return activeThesis.currentStage === "manuscript"
         ? "This thesis is ready to be completed."
         : "This stage is approved and ready to advance to the next stage.";
     }
 
-    if (thesis.stageStatus === "under_review") {
+    if (activeThesis.stageStatus === "under_review") {
       return "This status is reserved for exceptional manual handling. In the normal flow, adviser review begins after a student submission.";
     }
 
-    if (thesis.stageStatus === "rejected") {
+    if (activeThesis.stageStatus === "rejected") {
       return "This stage is rejected. Use manual override only if you intentionally want to reopen or change the workflow state.";
     }
 
-    if (thesis.stageStatus === "completed") {
+    if (activeThesis.stageStatus === "completed") {
       return "This thesis has already completed the workflow.";
     }
 
