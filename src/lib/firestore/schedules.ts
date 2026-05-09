@@ -4,6 +4,7 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   Timestamp,
@@ -44,5 +45,18 @@ export async function updateSchedule(
 
 export async function getAllSchedules(): Promise<DefenseSchedule[]> {
   const snap = await getDocs(collection(db, "defenseSchedules"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as DefenseSchedule));
+}
+
+export async function deleteSchedule(scheduleId: string): Promise<void> {
+  await deleteDoc(doc(db, "defenseSchedules", scheduleId));
+}
+
+export async function getSchedulesByPanelMember(panelMemberId: string): Promise<DefenseSchedule[]> {
+  const q = query(
+    collection(db, "defenseSchedules"),
+    where("panelIds", "array-contains", panelMemberId)
+  );
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as DefenseSchedule));
 }

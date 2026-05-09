@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { getApplicationsByAdviser } from "@/lib/firestore/adviser";
 import { getThesis } from "@/lib/firestore/theses";
-import { AdviserApplication, Thesis, STAGE_LABELS } from "@/types";
+import { getSchedulesByThesis, getSchedulesByPanelMember } from "@/lib/firestore/schedules";
+import { AdviserApplication, Thesis, DefenseSchedule, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ArrowRight, Eye } from "lucide-react";
+import { FileText, ArrowRight, Eye, CalendarDays } from "lucide-react";
 
 interface AssignedThesis {
   application: AdviserApplication;
@@ -22,6 +23,7 @@ export default function AdviserDashboard() {
   const { tmsUser } = useAuth();
   const [items, setItems] = useState<AssignedThesis[]>([]);
   const [loading, setLoading] = useState(true);
+  const [upcomingSchedules, setUpcomingSchedules] = useState<(DefenseSchedule & { thesisTitle: string })[]>([]);
 
   useEffect(() => {
     if (!tmsUser) return;
@@ -33,7 +35,46 @@ export default function AdviserDashboard() {
           thesis: await getThesis(app.thesisId),
         }))
       );
-      setItems(withThesis.filter((item) => item.thesis !== null));
+      const resolved = withThesis.filter((item) => item.thesis !== null);
+      setItems(resolved);
+
+      // Fetch schedules for all advised theses
+      const adviserSchedules = (
+        await Promise.all(
+          resolved.map(async ({ application, thesis }) => {
+            const ss = await getSchedulesByThesis(application.thesisId);
+            return ss.map((s) => ({ ...s, thesisTitle: thesis?.title ?? "Unknown thesis" }));
+          })
+        )
+      ).flat();
+
+      // For adviser_panel role, also include schedules where they're a panelist
+      let panelScheduleMap: Map<string, DefenseSchedule & { thesisTitle: string }> = new Map();
+      if (tmsUser.role === "adviser_panel") {
+        const panelSchedules = await getSchedulesByPanelMember(tmsUser.uid);
+        const thesisTitleMap = Object.fromEntries(
+          resolved.map(({ application, thesis }) => [application.thesisId, thesis?.title ?? "Unknown thesis"])
+        );
+        panelSchedules.forEach((s) => {
+          panelScheduleMap.set(s.id, {
+            ...s,
+            thesisTitle: thesisTitleMap[s.thesisId] ?? "Unknown thesis",
+          });
+        });
+      }
+
+      // Merge, dedupe by id, filter upcoming, sort
+      const allById = new Map<string, DefenseSchedule & { thesisTitle: string }>();
+      adviserSchedules.forEach((s) => allById.set(s.id, s));
+      panelScheduleMap.forEach((s, id) => allById.set(id, s));
+
+      const now = new Date();
+      setUpcomingSchedules(
+        [...allById.values()]
+          .filter((s) => s.scheduledAt.toDate() >= now)
+          .sort((a, b) => a.scheduledAt.toMillis() - b.scheduledAt.toMillis())
+      );
+
       setLoading(false);
     });
   }, [tmsUser]);
@@ -61,6 +102,33 @@ export default function AdviserDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming defense schedules */}
+      {!loading && upcomingSchedules.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+              <CalendarDays className="w-4 h-4" />
+              Upcoming Defenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingSchedules.map((s) => (
+              <div key={s.id} className="flex items-start justify-between gap-3 p-3 bg-white border border-blue-100 rounded-lg">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{s.thesisTitle}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {s.scheduledAt.toDate().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })} · {s.venue}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0 border-blue-300 text-blue-700">
+                  {STAGE_LABELS[s.stage]}
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="space-y-3">

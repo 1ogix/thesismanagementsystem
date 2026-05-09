@@ -4,25 +4,39 @@ import { useEffect, useState } from "react";
 import { getAllUsers } from "@/lib/firestore/users";
 import { getAllTheses } from "@/lib/firestore/theses";
 import { getAllGroups } from "@/lib/firestore/groups";
-import { Card, CardContent } from "@/components/ui/card";
+import { getAllSchedules } from "@/lib/firestore/schedules";
+import { DefenseSchedule, Thesis, STAGE_LABELS } from "@/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, FileText, BookOpen, CheckCircle } from "lucide-react";
+import { Users, FileText, BookOpen, CheckCircle, CalendarDays } from "lucide-react";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     users: 0, theses: 0, groups: 0, approved: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [upcomingSchedules, setUpcomingSchedules] = useState<(DefenseSchedule & { thesisTitle: string })[]>([]);
 
   useEffect(() => {
-    Promise.all([getAllUsers(), getAllTheses(), getAllGroups()]).then(
-      ([users, theses, groups]) => {
+    Promise.all([getAllUsers(), getAllTheses(), getAllGroups(), getAllSchedules()]).then(
+      ([users, theses, groups, schedules]) => {
         setStats({
           users: users.length,
           theses: theses.length,
           groups: groups.length,
           approved: theses.filter((t) => t.stageStatus === "approved").length,
         });
+
+        const thesisMap = Object.fromEntries(theses.map((t: Thesis) => [t.id, t.title]));
+        const now = new Date();
+        const upcoming = schedules
+          .filter((s) => s.scheduledAt.toDate() >= now)
+          .sort((a, b) => a.scheduledAt.toMillis() - b.scheduledAt.toMillis())
+          .slice(0, 5)
+          .map((s) => ({ ...s, thesisTitle: thesisMap[s.thesisId] ?? "Unknown thesis" }));
+        setUpcomingSchedules(upcoming);
+
         setLoading(false);
       }
     );
@@ -55,6 +69,31 @@ export default function AdminDashboard() {
               </Card>
             ))}
       </div>
+
+      {/* Upcoming defense schedules */}
+      {!loading && upcomingSchedules.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-blue-500" />
+              Upcoming Defenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingSchedules.map((s) => (
+              <div key={s.id} className="flex items-start justify-between gap-3 p-3 border rounded-lg">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{s.thesisTitle}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {s.scheduledAt.toDate().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })} · {s.venue}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">{STAGE_LABELS[s.stage]}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

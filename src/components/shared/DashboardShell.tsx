@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   BookOpen, Users, FileText, ClipboardCheck, Bell, LogOut,
-  LayoutDashboard, Eye, CalendarDays, UserCog, ChevronDown,
+  LayoutDashboard, Eye, CalendarDays, UserCog, ChevronDown, Menu, X,
 } from "lucide-react";
 import { UserRole } from "@/types";
 import { toast } from "sonner";
@@ -58,6 +59,11 @@ const NAV_ITEMS: Record<
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
   const { tmsUser } = useAuth();
   const { notifications, unreadCount, markRead } = useNotifications(tmsUser?.uid ?? null);
 
@@ -79,11 +85,30 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-60 bg-slate-900 flex flex-col shrink-0">
-        <div className="flex items-center gap-2 px-5 py-5 border-b border-white/10">
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 w-60 bg-slate-900 flex flex-col shrink-0 transition-transform duration-200 ease-in-out",
+        "md:static md:translate-x-0",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="relative flex items-center gap-2 px-5 py-5 border-b border-white/10">
           <BookOpen className="w-5 h-5 text-blue-400" />
           <span className="font-bold text-white">ThesisHub</span>
+          <button
+            className="md:hidden absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -133,7 +158,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-          <div />
+          <button
+            className="md:hidden p-2 -ml-2 rounded-md text-slate-600 hover:bg-slate-100"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="hidden md:block" />
           <div className="flex items-center gap-3">
             {/* Notifications */}
             <DropdownMenu>

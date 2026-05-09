@@ -5,24 +5,32 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { getGroupByMember } from "@/lib/firestore/groups";
 import { getThesisByGroup } from "@/lib/firestore/theses";
-import { Group, Thesis } from "@/types";
+import { getSchedulesByThesis } from "@/lib/firestore/schedules";
+import { Group, Thesis, DefenseSchedule, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { StageTimeline } from "@/components/thesis/StageTimeline";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, FileText, ArrowRight } from "lucide-react";
+import { Users, FileText, ArrowRight, CalendarDays } from "lucide-react";
 
 export default function StudentDashboard() {
   const { tmsUser } = useAuth();
   const [group, setGroup] = useState<Group | null | undefined>(undefined);
   const [thesis, setThesis] = useState<Thesis | null>(null);
+  const [schedules, setSchedules] = useState<DefenseSchedule[]>([]);
 
   useEffect(() => {
     if (!tmsUser) return;
     getGroupByMember(tmsUser.uid).then((g) => {
       setGroup(g);
-      if (g) getThesisByGroup(g.id).then(setThesis);
+      if (g) {
+        getThesisByGroup(g.id).then((t) => {
+          setThesis(t);
+          if (t) getSchedulesByThesis(t.id).then(setSchedules);
+        });
+      }
     });
   }, [tmsUser]);
 
@@ -79,6 +87,35 @@ export default function StudentDashboard() {
               </Link>
             </CardContent>
           </Card>
+
+          {/* Upcoming defense schedules */}
+          {schedules.length > 0 && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+                  <CalendarDays className="w-4 h-4" />
+                  Upcoming Defense
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {schedules
+                  .sort((a, b) => a.scheduledAt.toMillis() - b.scheduledAt.toMillis())
+                  .map((s) => (
+                    <div key={s.id} className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">
+                          {s.scheduledAt.toDate().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })}
+                        </p>
+                        <p className="text-xs text-blue-700">{s.venue}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0 border-blue-300 text-blue-700">
+                        {STAGE_LABELS[s.stage]}
+                      </Badge>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Thesis card */}
           {!thesis ? (

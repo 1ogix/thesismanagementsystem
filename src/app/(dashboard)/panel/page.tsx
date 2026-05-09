@@ -6,13 +6,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { getThesesByPanel } from "@/lib/firestore/panel";
 import { getThesis } from "@/lib/firestore/theses";
 import { getEvaluationByPanel } from "@/lib/firestore/panel";
-import { PanelAssignment, Thesis, STAGE_LABELS } from "@/types";
+import { getSchedulesByPanelMember } from "@/lib/firestore/schedules";
+import { getAllTheses } from "@/lib/firestore/theses";
+import { PanelAssignment, Thesis, DefenseSchedule, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/thesis/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, ArrowRight, CheckCircle } from "lucide-react";
+import { ClipboardCheck, ArrowRight, CheckCircle, CalendarDays } from "lucide-react";
 
 interface AssignmentWithThesis extends PanelAssignment {
   thesis: Thesis | null;
@@ -23,10 +25,15 @@ export default function PanelDashboard() {
   const { tmsUser } = useAuth();
   const [assignments, setAssignments] = useState<AssignmentWithThesis[]>([]);
   const [loading, setLoading] = useState(true);
+  const [schedules, setSchedules] = useState<(DefenseSchedule & { thesisTitle: string })[]>([]);
 
   useEffect(() => {
     if (!tmsUser) return;
-    getThesesByPanel(tmsUser.uid).then(async (assigns) => {
+    Promise.all([
+      getThesesByPanel(tmsUser.uid),
+      getSchedulesByPanelMember(tmsUser.uid),
+      getAllTheses(),
+    ]).then(async ([assigns, panelSchedules, allTheses]) => {
       const withThesis = await Promise.all(
         assigns.map(async (a) => {
           const thesis = await getThesis(a.thesisId);
@@ -35,6 +42,16 @@ export default function PanelDashboard() {
         })
       );
       setAssignments(withThesis.filter((a) => a.thesis !== null));
+
+      const thesisMap = Object.fromEntries(allTheses.map((t: Thesis) => [t.id, t.title]));
+      const now = new Date();
+      setSchedules(
+        panelSchedules
+          .filter((s) => s.scheduledAt.toDate() >= now)
+          .sort((a, b) => a.scheduledAt.toMillis() - b.scheduledAt.toMillis())
+          .map((s) => ({ ...s, thesisTitle: thesisMap[s.thesisId] ?? "Unknown thesis" }))
+      );
+
       setLoading(false);
     });
   }, [tmsUser]);
@@ -69,6 +86,33 @@ export default function PanelDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming defense schedules */}
+      {!loading && schedules.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+              <CalendarDays className="w-4 h-4" />
+              Upcoming Defenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {schedules.map((s) => (
+              <div key={s.id} className="flex items-start justify-between gap-3 p-3 bg-white border border-blue-100 rounded-lg">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{s.thesisTitle}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {s.scheduledAt.toDate().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })} · {s.venue}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0 border-blue-300 text-blue-700">
+                  {STAGE_LABELS[s.stage]}
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="space-y-3">

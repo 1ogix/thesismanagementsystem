@@ -151,11 +151,11 @@ export default function ThesisDetailPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {stageSubs.map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <p className="text-sm font-medium">{s.fileName}</p>
+                <div key={s.id} className="flex items-start justify-between p-3 border rounded-lg gap-2">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <FileText className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium break-all">{s.fileName}</p>
                       <p className="text-xs text-slate-500">Version {s.version}</p>
                       {s.adviserFeedback && (
                         <p className="text-xs text-orange-600 mt-1">
@@ -164,7 +164,7 @@ export default function ThesisDetailPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status={s.status as never} />
                     <Button
                       variant="ghost"
