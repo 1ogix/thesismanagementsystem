@@ -14,10 +14,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,9 +33,13 @@ import { toast } from "sonner";
 type RegisterRoleOption = { value: UserRole; label: string; desc: string };
 
 const ROLES: RegisterRoleOption[] = [
-  { value: "student", label: "Student", desc: "Submit thesis proposals and documents" },
-  { value: "adviser", label: "Adviser", desc: "Mentor and review student theses" },
-  { value: "panel", label: "Panel Member", desc: "Evaluate and grade thesis defenses" },
+  {
+    value: "student",
+    label: "Student",
+    desc: "Submit thesis proposals and documents",
+  },
+  // { value: "adviser", label: "Adviser", desc: "Mentor and review student theses" },
+  // { value: "panel", label: "Panel Member", desc: "Evaluate and grade thesis defenses" },
 ];
 
 export default function RegisterPage() {
@@ -50,7 +62,10 @@ export default function RegisterPage() {
   }, []);
 
   useEffect(() => {
-    if (!form.schoolId) { setCourses([]); return; }
+    if (!form.schoolId) {
+      setCourses([]);
+      return;
+    }
     getActiveCoursesBySchool(form.schoolId).then(setCourses);
     setForm((prev) => ({ ...prev, courseId: "" }));
   }, [form.schoolId]);
@@ -61,12 +76,25 @@ export default function RegisterPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.role) { toast.error("Please select a role."); return; }
-    if (!form.schoolId) { toast.error("Please select a school."); return; }
-    if (!form.courseId) { toast.error("Please select a course."); return; }
+    if (!form.role) {
+      toast.error("Please select a role.");
+      return;
+    }
+    if (!form.schoolId) {
+      toast.error("Please select a school.");
+      return;
+    }
+    if (!form.courseId) {
+      toast.error("Please select a course.");
+      return;
+    }
     setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password,
+      );
       await updateProfile(cred.user, { displayName: form.displayName });
       await createUserDocument(cred.user.uid, {
         email: form.email,
@@ -88,7 +116,8 @@ export default function RegisterPage() {
     }
   }
 
-  const inputCls = "bg-white/5 border-white/10 text-white placeholder:text-slate-500";
+  const inputCls =
+    "bg-white/5 border-white/10 text-white placeholder:text-slate-500";
   const triggerCls = "bg-white/5 border-white/10 text-white";
 
   return (
@@ -137,7 +166,9 @@ export default function RegisterPage() {
                   type="email"
                   placeholder="you@university.edu.ph"
                   value={form.institutionalEmail}
-                  onChange={(e) => handleChange("institutionalEmail", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("institutionalEmail", e.target.value)
+                  }
                   className={inputCls}
                 />
               </div>
@@ -145,17 +176,30 @@ export default function RegisterPage() {
               {/* School */}
               <div className="space-y-1">
                 <Label className="text-slate-300">School</Label>
-                <Select onValueChange={(v) => handleChange("schoolId", (v ?? "") as string)}>
+                <Select
+                  onValueChange={(v) =>
+                    handleChange("schoolId", (v ?? "") as string)
+                  }
+                >
                   <SelectTrigger className={triggerCls}>
-                    <SelectValue placeholder={schools.length === 0 ? "Loading schools…" : "Select your school"}>
+                    <SelectValue
+                      placeholder={
+                        schools.length === 0
+                          ? "Loading schools…"
+                          : "Select your school"
+                      }
+                    >
                       {form.schoolId
-                        ? (schools.find((s) => s.id === form.schoolId)?.name ?? null)
+                        ? (schools.find((s) => s.id === form.schoolId)?.name ??
+                          null)
                         : null}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {schools.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -167,18 +211,29 @@ export default function RegisterPage() {
                   <Label className="text-slate-300">Course / Program</Label>
                   <Select
                     key={form.schoolId}
-                    onValueChange={(v) => handleChange("courseId", (v ?? "") as string)}
+                    onValueChange={(v) =>
+                      handleChange("courseId", (v ?? "") as string)
+                    }
                   >
                     <SelectTrigger className={triggerCls}>
-                      <SelectValue placeholder={courses.length === 0 ? "No active courses" : "Select your course"}>
+                      <SelectValue
+                        placeholder={
+                          courses.length === 0
+                            ? "No active courses"
+                            : "Select your course"
+                        }
+                      >
                         {form.courseId
-                          ? (courses.find((c) => c.id === form.courseId)?.name ?? null)
+                          ? (courses.find((c) => c.id === form.courseId)
+                              ?.name ?? null)
                           : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {courses.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -186,9 +241,13 @@ export default function RegisterPage() {
               )}
 
               {/* Role */}
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <Label className="text-slate-300">Role</Label>
-                <Select onValueChange={(v) => handleChange("role", (v ?? "") as string)}>
+                <Select
+                  onValueChange={(v) =>
+                    handleChange("role", (v ?? "") as string)
+                  }
+                >
                   <SelectTrigger className={triggerCls}>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -196,12 +255,14 @@ export default function RegisterPage() {
                     {ROLES.map((r) => (
                       <SelectItem key={r.value} value={r.value}>
                         <span className="font-medium">{r.label}</span>
-                        <span className="text-xs text-muted-foreground ml-2">— {r.desc}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          — {r.desc}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
 
               <div className="space-y-1">
                 <Label className="text-slate-300">Password</Label>
@@ -221,13 +282,18 @@ export default function RegisterPage() {
                 className="w-full bg-blue-600 hover:bg-blue-500"
                 disabled={loading}
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
                 Create Account
               </Button>
             </form>
             <p className="text-center text-sm text-slate-400 mt-4">
               Already have an account?{" "}
-              <Link href="/auth/login" className="text-blue-400 hover:underline">
+              <Link
+                href="/auth/login"
+                className="text-blue-400 hover:underline"
+              >
                 Sign In
               </Link>
             </p>
