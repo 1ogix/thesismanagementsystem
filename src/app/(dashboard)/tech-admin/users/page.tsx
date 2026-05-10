@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { getUsersByCourse, updateUserRole } from "@/lib/firestore/users";
-import { TmsUser, UserRole } from "@/types";
-import { ADMIN_ASSIGNABLE_ROLES, ROLE_LABELS } from "@/lib/roles";
+import { getUsersBySchool, updateUserRole } from "@/lib/firestore/users";
+import { getCoursesBySchool } from "@/lib/firestore/courses";
+import { TmsUser, UserRole, Course } from "@/types";
+import { TECH_ADMIN_ASSIGNABLE_ROLES, ROLE_LABELS } from "@/lib/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +25,10 @@ const ROLE_COLORS: Record<UserRole, string> = {
   tech_admin: "bg-orange-100 text-orange-700",
 };
 
-export default function UsersPage() {
+export default function TechAdminUsersPage() {
   const { tmsUser } = useAuth();
   const [users, setUsers] = useState<TmsUser[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [filtered, setFiltered] = useState<TmsUser[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -34,10 +36,14 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!tmsUser) return;
-    if (!tmsUser.courseId) { setLoading(false); return; }
-    getUsersByCourse(tmsUser.courseId).then((u) => {
+    if (!tmsUser.schoolId) { setLoading(false); return; }
+    Promise.all([
+      getUsersBySchool(tmsUser.schoolId),
+      getCoursesBySchool(tmsUser.schoolId),
+    ]).then(([u, c]) => {
       setUsers(u);
       setFiltered(u);
+      setCourses(c);
       setLoading(false);
     });
   }, [tmsUser]);
@@ -48,8 +54,7 @@ export default function UsersPage() {
       users.filter(
         (u) =>
           u.displayName.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.department.toLowerCase().includes(q)
+          u.email.toLowerCase().includes(q)
       )
     );
   }, [search, users]);
@@ -67,12 +72,14 @@ export default function UsersPage() {
     }
   }
 
+  const courseMap = Object.fromEntries(courses.map((c) => [c.id, c.name]));
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Users</h1>
+        <h1 className="text-2xl font-bold text-slate-900">All Users</h1>
         <Input
-          placeholder="Search by name, email, department..."
+          placeholder="Search by name or email…"
           className="w-72"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -91,22 +98,22 @@ export default function UsersPage() {
           ) : (
             <div className="space-y-2">
               {filtered.map((user) => (
-                <div
-                  key={user.uid}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-9 h-9">
+                <div key={user.uid} className="flex items-center justify-between p-3 border rounded-lg gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="w-9 h-9 shrink-0">
                       <AvatarFallback className="text-xs bg-slate-100 text-slate-600">
                         {user.displayName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{user.displayName}</p>
-                      <p className="text-xs text-slate-500">{user.email} · {user.department}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{user.displayName}</p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {user.email}
+                        {user.courseId ? ` · ${courseMap[user.courseId] ?? user.courseId}` : ""}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge className={`text-xs ${ROLE_COLORS[user.role]}`} variant="outline">
                       {ROLE_LABELS[user.role]}
                     </Badge>
@@ -125,8 +132,8 @@ export default function UsersPage() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {ADMIN_ASSIGNABLE_ROLES.map((r) => (
-                          <SelectItem key={r} value={r} className="text-xs capitalize">
+                        {TECH_ADMIN_ASSIGNABLE_ROLES.map((r) => (
+                          <SelectItem key={r} value={r} className="text-xs">
                             {ROLE_LABELS[r]}
                           </SelectItem>
                         ))}

@@ -74,7 +74,7 @@ export default function ThesisPage() {
     if (!group) return;
     setLoading(true);
     try {
-      await createThesis(group.id, form.title.trim(), form.abstract.trim());
+      await createThesis(group.id, form.title.trim(), form.abstract.trim(), group.schoolId ?? "", group.courseId ?? "");
       const t = await getThesisByGroup(group.id);
       setThesis(t);
       toast.success("Thesis created!");

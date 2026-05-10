@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllTheses } from "@/lib/firestore/theses";
-import { getAllGroups } from "@/lib/firestore/groups";
+import { useAuth } from "@/hooks/useAuth";
+import { getThesesByCourse } from "@/lib/firestore/theses";
+import { getGroupsByCourse } from "@/lib/firestore/groups";
 import { Thesis, Group, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,16 +14,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight } from "lucide-react";
 
 export default function AdminThesesPage() {
+  const { tmsUser } = useAuth();
   const [theses, setTheses] = useState<(Thesis & { group?: Group })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getAllTheses(), getAllGroups()]).then(([ts, gs]) => {
+    if (!tmsUser) return;
+    if (!tmsUser.courseId) { setLoading(false); return; }
+    Promise.all([
+      getThesesByCourse(tmsUser.courseId),
+      getGroupsByCourse(tmsUser.courseId),
+    ]).then(([ts, gs]) => {
       const groupMap = Object.fromEntries(gs.map((g) => [g.id, g]));
       setTheses(ts.map((t) => ({ ...t, group: groupMap[t.groupId] })));
       setLoading(false);
     });
-  }, []);
+  }, [tmsUser]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

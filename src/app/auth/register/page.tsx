@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createUserDocument } from "@/lib/firestore/users";
-import { UserRole } from "@/types";
+import { getAllSchools } from "@/lib/firestore/schools";
+import { getActiveCoursesBySchool } from "@/lib/firestore/courses";
+import { UserRole, School, Course } from "@/types";
 import { getDefaultDashboardRoute, SELF_REGISTER_ROLES } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,39 +24,36 @@ import { toast } from "sonner";
 
 type RegisterRoleOption = { value: UserRole; label: string; desc: string };
 
-const ALL_ROLES: RegisterRoleOption[] = [
-  {
-    value: "student",
-    label: "Student",
-    desc: "Submit thesis proposals and documents",
-  },
-  {
-    value: "adviser",
-    label: "Adviser",
-    desc: "Mentor and review student theses",
-  },
-  {
-    value: "panel",
-    label: "Panel Member",
-    desc: "Evaluate and grade thesis defenses",
-  },
+const ROLES: RegisterRoleOption[] = [
+  { value: "student", label: "Student", desc: "Submit thesis proposals and documents" },
+  { value: "adviser", label: "Adviser", desc: "Mentor and review student theses" },
+  { value: "panel", label: "Panel Member", desc: "Evaluate and grade thesis defenses" },
 ];
-
-const ROLES = ALL_ROLES.filter((role) =>
-  SELF_REGISTER_ROLES.includes(role.value),
-);
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [schools, setSchools] = useState<School[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [form, setForm] = useState({
     displayName: "",
     email: "",
     institutionalEmail: "",
-    department: "",
     password: "",
     role: "" as UserRole | "",
+    schoolId: "",
+    courseId: "",
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getAllSchools().then(setSchools);
+  }, []);
+
+  useEffect(() => {
+    if (!form.schoolId) { setCourses([]); return; }
+    getActiveCoursesBySchool(form.schoolId).then(setCourses);
+    setForm((prev) => ({ ...prev, courseId: "" }));
+  }, [form.schoolId]);
 
   function handleChange(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -62,10 +61,9 @@ export default function RegisterPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.role) {
-      toast.error("Please select a role.");
-      return;
-    }
+    if (!form.role) { toast.error("Please select a role."); return; }
+    if (!form.schoolId) { toast.error("Please select a school."); return; }
+    if (!form.courseId) { toast.error("Please select a course."); return; }
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
@@ -74,20 +72,24 @@ export default function RegisterPage() {
         email: form.email,
         displayName: form.displayName,
         role: form.role as UserRole,
-        department: form.department,
+        department: courses.find((c) => c.id === form.courseId)?.name ?? "",
         institutionalEmail: form.institutionalEmail || form.email,
+        schoolId: form.schoolId,
+        courseId: form.courseId,
       });
 
       document.cookie = `tms-role=${form.role}; path=/; max-age=604800`;
       toast.success("Account created!");
       router.push(getDefaultDashboardRoute(form.role as UserRole));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Registration failed.";
-      toast.error(message);
+      toast.error(err instanceof Error ? err.message : "Registration failed.");
     } finally {
       setLoading(false);
     }
   }
+
+  const inputCls = "bg-white/5 border-white/10 text-white placeholder:text-slate-500";
+  const triggerCls = "bg-white/5 border-white/10 text-white";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
@@ -113,9 +115,10 @@ export default function RegisterPage() {
                   value={form.displayName}
                   onChange={(e) => handleChange("displayName", e.target.value)}
                   required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className={inputCls}
                 />
               </div>
+
               <div className="space-y-1">
                 <Label className="text-slate-300">Email</Label>
                 <Input
@@ -124,9 +127,10 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className={inputCls}
                 />
               </div>
+
               <div className="space-y-1">
                 <Label className="text-slate-300">Institutional Email</Label>
                 <Input
@@ -134,23 +138,58 @@ export default function RegisterPage() {
                   placeholder="you@university.edu.ph"
                   value={form.institutionalEmail}
                   onChange={(e) => handleChange("institutionalEmail", e.target.value)}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className={inputCls}
                 />
               </div>
+
+              {/* School */}
               <div className="space-y-1">
-                <Label className="text-slate-300">Department / Program</Label>
-                <Input
-                  placeholder="BSCS, BSIT, etc."
-                  value={form.department}
-                  onChange={(e) => handleChange("department", e.target.value)}
-                  required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                />
+                <Label className="text-slate-300">School</Label>
+                <Select onValueChange={(v) => handleChange("schoolId", (v ?? "") as string)}>
+                  <SelectTrigger className={triggerCls}>
+                    <SelectValue placeholder={schools.length === 0 ? "Loading schools…" : "Select your school"}>
+                      {form.schoolId
+                        ? (schools.find((s) => s.id === form.schoolId)?.name ?? null)
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schools.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Course — only shown once a school is picked */}
+              {form.schoolId && (
+                <div className="space-y-1">
+                  <Label className="text-slate-300">Course / Program</Label>
+                  <Select
+                    key={form.schoolId}
+                    onValueChange={(v) => handleChange("courseId", (v ?? "") as string)}
+                  >
+                    <SelectTrigger className={triggerCls}>
+                      <SelectValue placeholder={courses.length === 0 ? "No active courses" : "Select your course"}>
+                        {form.courseId
+                          ? (courses.find((c) => c.id === form.courseId)?.name ?? null)
+                          : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Role */}
               <div className="space-y-1">
                 <Label className="text-slate-300">Role</Label>
                 <Select onValueChange={(v) => handleChange("role", (v ?? "") as string)}>
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectTrigger className={triggerCls}>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -163,6 +202,7 @@ export default function RegisterPage() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-1">
                 <Label className="text-slate-300">Password</Label>
                 <Input
@@ -172,9 +212,10 @@ export default function RegisterPage() {
                   onChange={(e) => handleChange("password", e.target.value)}
                   required
                   minLength={8}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className={inputCls}
                 />
               </div>
+
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-500"

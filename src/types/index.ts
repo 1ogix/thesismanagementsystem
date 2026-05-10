@@ -5,7 +5,8 @@ export type UserRole =
   | "adviser"
   | "panel"
   | "adviser_panel"
-  | "admin";
+  | "admin"
+  | "tech_admin";
 
 export type ThesisStage = "proposal" | "pre_oral" | "final_oral" | "manuscript";
 
@@ -31,6 +32,30 @@ export type NotificationType =
   | "schedule"
   | "comment";
 
+export interface School {
+  id: string;
+  name: string;
+  createdAt: Timestamp;
+}
+
+export interface Course {
+  id: string;
+  schoolId: string;
+  name: string;
+  active: boolean;
+  coordinatorId: string | null;
+  createdAt: Timestamp;
+}
+
+export const PRESET_COURSES = [
+  "BS Computer Engineering",
+  "BS Architecture",
+  "BS Civil Engineering",
+  "BS Electrical Engineering",
+  "BS Computer Science",
+  "BS Information Technology",
+] as const;
+
 export interface TmsUser {
   uid: string;
   email: string;
@@ -38,6 +63,8 @@ export interface TmsUser {
   role: UserRole;
   department: string;
   institutionalEmail: string;
+  schoolId: string;
+  courseId: string | null; // null for tech_admin (school-level, no course)
   createdAt: Timestamp;
 }
 
@@ -48,6 +75,8 @@ export interface Group {
   leaderId: string;
   adviserId: string | null;
   status: "forming" | "active" | "completed";
+  schoolId: string;
+  courseId: string;
   createdAt: Timestamp;
 }
 
@@ -58,6 +87,8 @@ export interface Thesis {
   abstract: string;
   currentStage: ThesisStage;
   stageStatus: StageStatus;
+  schoolId: string;
+  courseId: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

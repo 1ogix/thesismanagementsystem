@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { getAllTheses } from "@/lib/firestore/theses";
+import { getThesesByCourse } from "@/lib/firestore/theses";
 import {
   applyAsAdviser,
   getApplicationsByAdviser,
@@ -39,8 +39,8 @@ export default function AvailableThesesPage() {
   const [applying, setApplying] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!tmsUser) return;
-    getAllTheses()
+    if (!tmsUser?.courseId) return;
+    getThesesByCourse(tmsUser.courseId)
       .then(async (all) => {
         const myApplications = await getApplicationsByAdviser(tmsUser.uid);
         const withState = await Promise.all(
@@ -61,9 +61,10 @@ export default function AvailableThesesPage() {
         setTheses(withState);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Failed to load available theses:", err);
-        toast.error(`Error loading theses: ${err?.message ?? String(err)}`);
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Failed to load available theses:", msg);
+        toast.error(`Error loading theses: ${msg}`);
         setLoading(false);
       });
   }, [tmsUser]);

@@ -54,6 +54,11 @@ const NAV_ITEMS: Record<
     { href: "/admin/assign", label: "Assignments", icon: Users },
     { href: "/admin/schedules", label: "Schedules", icon: CalendarDays },
   ],
+  tech_admin: [
+    { href: "/tech-admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/tech-admin/courses", label: "Courses", icon: BookOpen },
+    { href: "/tech-admin/users", label: "Users", icon: UserCog },
+  ],
 };
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

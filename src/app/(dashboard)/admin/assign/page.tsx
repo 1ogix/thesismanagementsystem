@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllTheses, getThesis } from "@/lib/firestore/theses";
-import { getUsersByCapability } from "@/lib/firestore/users";
+import { useAuth } from "@/hooks/useAuth";
+import { getThesesByCourse, getThesis } from "@/lib/firestore/theses";
+import { getUsersByCapabilityAndCourse } from "@/lib/firestore/users";
 import {
   assignAdviserByAdmin,
   getApplicationsByThesis,
@@ -35,6 +36,7 @@ import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
 
 export default function AssignPage() {
+  const { tmsUser } = useAuth();
   const [theses, setTheses] = useState<Thesis[]>([]);
   const [advisers, setAdvisers] = useState<TmsUser[]>([]);
   const [panelists, setPanelists] = useState<TmsUser[]>([]);
@@ -54,17 +56,19 @@ export default function AssignPage() {
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
+    if (!tmsUser) return;
+    if (!tmsUser.courseId) { setLoading(false); return; }
     Promise.all([
-      getAllTheses(),
-      getUsersByCapability("adviser"),
-      getUsersByCapability("panel"),
+      getThesesByCourse(tmsUser.courseId),
+      getUsersByCapabilityAndCourse("adviser", tmsUser.courseId),
+      getUsersByCapabilityAndCourse("panel", tmsUser.courseId),
     ]).then(([ts, adv, pan]) => {
       setTheses(ts);
       setAdvisers(adv);
       setPanelists(pan);
       setLoading(false);
     });
-  }, []);
+  }, [tmsUser]);
 
   useEffect(() => {
     if (!selectedThesis) {

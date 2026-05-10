@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllTheses } from "@/lib/firestore/theses";
+import { useAuth } from "@/hooks/useAuth";
+import { getThesesByCourse } from "@/lib/firestore/theses";
 import { createSchedule, updateSchedule, getAllSchedules, deleteSchedule } from "@/lib/firestore/schedules";
 import { createNotificationsBulk } from "@/lib/firestore/notifications";
 import { getGroup } from "@/lib/firestore/groups";
-import { getUsersByIds, getUsersByCapability, getUserDocument } from "@/lib/firestore/users";
+import { getUsersByIds, getUsersByCapabilityAndCourse, getUserDocument } from "@/lib/firestore/users";
 import { ROLE_LABELS } from "@/lib/roles";
 import { TmsUser } from "@/types";
 import { Thesis, DefenseSchedule, STAGE_LABELS } from "@/types";
@@ -28,6 +29,7 @@ import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
 
 export default function SchedulesPage() {
+  const { tmsUser } = useAuth();
   const [theses, setTheses] = useState<Thesis[]>([]);
   const [schedules, setSchedules] = useState<DefenseSchedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,13 +52,20 @@ export default function SchedulesPage() {
   const [participantsLoading, setParticipantsLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([getAllTheses(), getAllSchedules(), getUsersByCapability("panel")]).then(([ts, sc, panelists]) => {
+    if (!tmsUser) return;
+    if (!tmsUser.courseId) { setLoading(false); return; }
+    Promise.all([
+      getThesesByCourse(tmsUser.courseId),
+      getAllSchedules(),
+      getUsersByCapabilityAndCourse("panel", tmsUser.courseId),
+    ]).then(([ts, allSc, panelists]) => {
+      const courseThesisIds = new Set(ts.map((t) => t.id));
       setTheses(ts);
-      setSchedules(sc);
+      setSchedules(allSc.filter((s) => courseThesisIds.has(s.thesisId)));
       setAvailablePanelists(panelists);
       setLoading(false);
     });
-  }, []);
+  }, [tmsUser]);
 
   useEffect(() => {
     if (!selectedThesis) {

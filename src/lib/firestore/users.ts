@@ -24,6 +24,18 @@ export async function createUserDocument(
   });
 }
 
+export async function getUsersByCourse(courseId: string): Promise<TmsUser[]> {
+  const q = query(collection(db, "users"), where("courseId", "==", courseId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as TmsUser);
+}
+
+export async function getUsersBySchool(schoolId: string): Promise<TmsUser[]> {
+  const q = query(collection(db, "users"), where("schoolId", "==", schoolId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as TmsUser);
+}
+
 export async function getUserDocument(uid: string): Promise<TmsUser | null> {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
@@ -53,6 +65,15 @@ export async function getUsersByCapability(
   const q = query(collection(db, "users"), where("role", "in", roles));
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as TmsUser);
+}
+
+export async function getUsersByCapabilityAndCourse(
+  capability: "adviser" | "panel",
+  courseId: string,
+): Promise<TmsUser[]> {
+  const roles = getRolesForCapability(capability);
+  const users = await getUsersByCourse(courseId);
+  return users.filter((u) => roles.includes(u.role));
 }
 
 export async function getUsersByIds(uids: string[]): Promise<TmsUser[]> {
