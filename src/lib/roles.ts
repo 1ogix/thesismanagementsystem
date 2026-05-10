@@ -5,7 +5,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   adviser: "Adviser",
   panel: "Panel Member",
   adviser_panel: "Adviser + Panel",
-  admin: "Admin",
+  admin: "Coordinator",
+  tech_admin: "Tech Admin",
 };
 
 export const ADMIN_ASSIGNABLE_ROLES: UserRole[] = [
@@ -14,6 +15,15 @@ export const ADMIN_ASSIGNABLE_ROLES: UserRole[] = [
   "panel",
   "adviser_panel",
   "admin",
+];
+
+export const TECH_ADMIN_ASSIGNABLE_ROLES: UserRole[] = [
+  "student",
+  "adviser",
+  "panel",
+  "adviser_panel",
+  "admin",
+  "tech_admin",
 ];
 
 export const SELF_REGISTER_ROLES: UserRole[] = [
@@ -41,6 +51,8 @@ export function getDefaultDashboardRoute(role: UserRole): string {
       return "/panel";
     case "admin":
       return "/admin";
+    case "tech_admin":
+      return "/tech-admin";
   }
 }
 
@@ -56,6 +68,8 @@ export function getAllowedRoutePrefixes(role: UserRole): string[] {
       return ["/adviser", "/panel"];
     case "admin":
       return ["/admin"];
+    case "tech_admin":
+      return ["/tech-admin"];
   }
 }
 

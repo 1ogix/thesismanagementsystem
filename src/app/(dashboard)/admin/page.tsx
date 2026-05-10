@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllUsers } from "@/lib/firestore/users";
-import { getAllTheses } from "@/lib/firestore/theses";
-import { getAllGroups } from "@/lib/firestore/groups";
+import { useAuth } from "@/hooks/useAuth";
+import { getUsersByCourse } from "@/lib/firestore/users";
+import { getThesesByCourse } from "@/lib/firestore/theses";
+import { getGroupsByCourse } from "@/lib/firestore/groups";
 import { getAllSchedules } from "@/lib/firestore/schedules";
 import { DefenseSchedule, Thesis, STAGE_LABELS } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Users, FileText, BookOpen, CheckCircle, CalendarDays } from "lucide-react";
 
 export default function AdminDashboard() {
+  const { tmsUser } = useAuth();
   const [stats, setStats] = useState({
     users: 0, theses: 0, groups: 0, approved: 0,
   });
@@ -19,7 +21,17 @@ export default function AdminDashboard() {
   const [upcomingSchedules, setUpcomingSchedules] = useState<(DefenseSchedule & { thesisTitle: string })[]>([]);
 
   useEffect(() => {
-    Promise.all([getAllUsers(), getAllTheses(), getAllGroups(), getAllSchedules()]).then(
+    if (!tmsUser) return;
+    if (!tmsUser.courseId) {
+      setLoading(false);
+      return;
+    }
+    Promise.all([
+      getUsersByCourse(tmsUser.courseId),
+      getThesesByCourse(tmsUser.courseId),
+      getGroupsByCourse(tmsUser.courseId),
+      getAllSchedules(),
+    ]).then(
       ([users, theses, groups, schedules]) => {
         setStats({
           users: users.length,
@@ -29,9 +41,10 @@ export default function AdminDashboard() {
         });
 
         const thesisMap = Object.fromEntries(theses.map((t: Thesis) => [t.id, t.title]));
+        const courseThesisIds = new Set(theses.map((t: Thesis) => t.id));
         const now = new Date();
         const upcoming = schedules
-          .filter((s) => s.scheduledAt.toDate() >= now)
+          .filter((s) => courseThesisIds.has(s.thesisId) && s.scheduledAt.toDate() >= now)
           .sort((a, b) => a.scheduledAt.toMillis() - b.scheduledAt.toMillis())
           .slice(0, 5)
           .map((s) => ({ ...s, thesisTitle: thesisMap[s.thesisId] ?? "Unknown thesis" }));
@@ -40,7 +53,7 @@ export default function AdminDashboard() {
         setLoading(false);
       }
     );
-  }, []);
+  }, [tmsUser]);
 
   const cards = [
     { label: "Total Users", value: stats.users, icon: Users, color: "text-blue-600" },
@@ -48,6 +61,20 @@ export default function AdminDashboard() {
     { label: "Active Groups", value: stats.groups, icon: BookOpen, color: "text-orange-500" },
     { label: "Approved Stages", value: stats.approved, icon: CheckCircle, color: "text-green-600" },
   ];
+
+  if (!loading && !tmsUser?.courseId) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-4">
+        <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="py-8 text-center text-yellow-800 text-sm space-y-1">
+            <p className="font-semibold">Your account is not linked to a course yet.</p>
+            <p className="text-yellow-700">Ask your Tech Admin to assign you as coordinator of a course in the Users page.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

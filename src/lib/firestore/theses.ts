@@ -16,7 +16,9 @@ import { Thesis, ThesisStage, StageStatus } from "@/types";
 export async function createThesis(
   groupId: string,
   title: string,
-  abstract: string
+  abstract: string,
+  schoolId: string,
+  courseId: string
 ): Promise<string> {
   const ref = await addDoc(collection(db, "theses"), {
     groupId,
@@ -24,6 +26,8 @@ export async function createThesis(
     abstract,
     currentStage: "proposal" as ThesisStage,
     stageStatus: "draft" as StageStatus,
+    schoolId,
+    courseId,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
@@ -46,6 +50,18 @@ export async function getThesisByGroup(groupId: string): Promise<Thesis | null> 
 
 export async function getAllTheses(): Promise<Thesis[]> {
   const snap = await getDocs(collection(db, "theses"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Thesis));
+}
+
+export async function getThesesByCourse(courseId: string): Promise<Thesis[]> {
+  const q = query(collection(db, "theses"), where("courseId", "==", courseId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Thesis));
+}
+
+export async function getThesesBySchool(schoolId: string): Promise<Thesis[]> {
+  const q = query(collection(db, "theses"), where("schoolId", "==", schoolId));
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Thesis));
 }
 

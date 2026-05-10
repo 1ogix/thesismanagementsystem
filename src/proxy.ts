@@ -23,7 +23,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Check role-based access
-  const protectedPrefixes = ["/student", "/adviser", "/panel", "/admin"];
+  const protectedPrefixes = ["/student", "/adviser", "/panel", "/admin", "/tech-admin"];
   const requestedProtected = protectedPrefixes.find((prefix) =>
     pathname.startsWith(prefix),
   );
@@ -34,6 +34,7 @@ export function proxy(request: NextRequest) {
 
   const allowedPrefixes = getAllowedRoutePrefixes(sessionRole);
   const isAllowed = sessionRole === "admin"
+    || sessionRole === "tech_admin"
     || allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
 
   if (!isAllowed) {

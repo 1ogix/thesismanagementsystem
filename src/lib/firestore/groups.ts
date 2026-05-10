@@ -15,7 +15,9 @@ import { Group } from "@/types";
 
 export async function createGroup(
   name: string,
-  leaderId: string
+  leaderId: string,
+  schoolId: string,
+  courseId: string
 ): Promise<string> {
   const ref = await addDoc(collection(db, "groups"), {
     name,
@@ -23,6 +25,8 @@ export async function createGroup(
     leaderId,
     adviserId: null,
     status: "forming",
+    schoolId,
+    courseId,
     createdAt: Timestamp.now(),
   });
   return ref.id;
@@ -71,6 +75,18 @@ export async function updateGroupStatus(
 
 export async function getAllGroups(): Promise<Group[]> {
   const snap = await getDocs(collection(db, "groups"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Group));
+}
+
+export async function getGroupsByCourse(courseId: string): Promise<Group[]> {
+  const q = query(collection(db, "groups"), where("courseId", "==", courseId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Group));
+}
+
+export async function getGroupsBySchool(schoolId: string): Promise<Group[]> {
+  const q = query(collection(db, "groups"), where("schoolId", "==", schoolId));
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Group));
 }
 

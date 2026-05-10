@@ -40,7 +40,7 @@ export default function GroupPage() {
     if (!tmsUser) return;
     setLoading(true);
     try {
-      const gid = await createGroup(groupName.trim(), tmsUser.uid);
+      const gid = await createGroup(groupName.trim(), tmsUser.uid, tmsUser.schoolId ?? "", tmsUser.courseId ?? "");
       const g = await getGroupByMember(tmsUser.uid);
       setGroup(g);
       setMembers([tmsUser]);
